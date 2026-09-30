@@ -30,6 +30,8 @@ export class Game {
   /** Seed forced by ?seed= (overrides Daily/Free). */
   readonly urlSeed: string | null;
   readonly debug: boolean;
+  /** ?bot=1: the autopilot plays the real round (demos, visual checks). */
+  readonly botPlay: boolean;
   fps = 60;
 
   private readonly states: Record<StateName, State>;
@@ -49,6 +51,7 @@ export class Game {
   ) {
     const params = new URLSearchParams(location.search);
     this.debug = params.get('debug') === '1';
+    this.botPlay = params.get('bot') === '1';
     this.urlSeed = params.get('seed');
     this.seed = this.urlSeed ?? todaySeed();
     this.world = new World(this.seed);

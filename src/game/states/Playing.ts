@@ -1,3 +1,4 @@
+import { Autopilot } from '../../bot/autopilot';
 import type { Game } from '../Game';
 import type { State } from './State';
 
@@ -5,9 +6,11 @@ import type { State } from './State';
 export class Playing implements State {
   readonly name = 'playing';
   private endDelay = 0;
+  private bot = new Autopilot();
 
   enter(g: Game): void {
     this.endDelay = 0;
+    if (g.world.time === 0) this.bot = new Autopilot();
     g.input.enabled = true;
     g.ui.hideAll();
     g.ui.showTouchHints(g.input.touchSeen);
@@ -20,7 +23,8 @@ export class Playing implements State {
 
   update(g: Game, dt: number): void {
     const w = g.world;
-    g.simulate(w, dt, () => g.input.update(1 / g.world.t.SIM_HZ));
+    const step = 1 / w.t.SIM_HZ;
+    g.simulate(w, dt, () => (g.botPlay ? this.bot.update(w) : g.input.update(step)));
     g.audio.track(w);
     g.renderer.update(w, dt);
     if (w.finished) {
