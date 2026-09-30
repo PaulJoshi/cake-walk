@@ -8,6 +8,7 @@ export class Result implements State {
   enter(g: Game): void {
     g.input.enabled = false;
     g.audio.stopMusic();
+    g.audio.result(g.world.outcome);
     g.showResult();
   }
 

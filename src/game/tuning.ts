@@ -57,8 +57,8 @@ export const T = {
 
   // ---------------------------------------------------------------- cake pendulum
   /** Effective gravity for the pendulum (px/s^2). */
-  // Full cake: L ~ 61 px, G/L ~ 3 (unstable e-fold ~0.7 s once outside the glue zone).
-  G: 183,
+  // Full cake: L ~ 61 px, G/L ~ 2.2: an unbalanced full-throttle start topples in ~2.3 s.
+  G: 135,
   /** Pendulum length = centre-of-mass height above the tray * this scale. */
   L_SCALE: 2.4,
   /**
@@ -87,7 +87,7 @@ export const T = {
   /** Tray thickness below the bottom tier (px). */
   TRAY_H: 2,
   /** Slide drive: s'' += SLIDE_GAIN * G * sin(theta). */
-  SLIDE_GAIN: 3,
+  SLIDE_GAIN: 4.1,
   /** Upper tiers are looser: drive multiplier grows by this much from bottom to top. */
   SLIDE_HEIGHT_GAIN: 0.6,
   /** Slide spring stiffness (1/s^2). */

@@ -16,6 +16,7 @@ const input = new Input(canvas);
 const audio = new Audio();
 const ui = new Overlays(uiRoot);
 const game = new Game(screen, renderer, input, audio, ui);
+ui.setMuted(audio.muted);
 
 // Wait briefly for the pixel font so canvas text doesn't flash the fallback.
 const fontReady = document.fonts?.load('16px "Press Start 2P"').catch(() => undefined);
