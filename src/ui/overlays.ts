@@ -19,6 +19,7 @@ type Action =
   | 'share'
   | 'title'
   | 'resume'
+  | 'pause'
   | 'controls'
   | 'back'
   | 'mute'
@@ -52,6 +53,7 @@ export class Overlays {
         <div class="cw-touch-r"><span>HOLD<br>TO WALK</span></div>
       </div>
       <div class="cw-corner">
+        <button class="cw-icon" data-action="pause" aria-label="Pause (P)" title="Pause (P)">❚❚</button>
         <button class="cw-icon" data-action="mute" aria-label="Mute (M)" title="Mute (M)">♪</button>
         <button class="cw-icon" data-action="fullscreen" aria-label="Fullscreen (F)" title="Fullscreen (F)">⛶</button>
       </div>
@@ -104,6 +106,7 @@ export class Overlays {
         g.newRound(g.mode === 'daily' ? 'free' : 'daily');
         break;
       case 'resume':
+      case 'pause':
         g.togglePause();
         break;
       case 'title':
@@ -138,6 +141,7 @@ export class Overlays {
     this.panel.dataset.screen = screen;
     this.panel.innerHTML = html;
     this.panel.hidden = false;
+    this.corner.classList.add('no-pause');
     const first =
       this.panel.querySelector<HTMLButtonElement>('button[data-primary]') ??
       this.panel.querySelector('button');
@@ -148,6 +152,7 @@ export class Overlays {
     this.panel.hidden = true;
     this.panel.dataset.screen = '';
     this.panel.innerHTML = '';
+    this.corner.classList.remove('no-pause');
   }
 
   private bestLine(mode: Mode): string {
@@ -161,7 +166,7 @@ export class Overlays {
       typeof (window.DeviceOrientationEvent as unknown as { requestPermission?: unknown })
         ?.requestPermission === 'function';
     const tilt =
-      touch && (needsTiltPermission || this.game?.input.hasTilt)
+      touch && (needsTiltPermission || 'DeviceOrientationEvent' in window)
         ? `<button data-action="tilt">${this.game?.input.tiltEnabled ? 'Tilt: ON' : 'Enable tilt controls'}</button>`
         : '';
     this.open(

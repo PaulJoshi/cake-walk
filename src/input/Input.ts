@@ -68,15 +68,29 @@ export class Input {
     window.addEventListener('keyup', (e) => this.onKey(e, false));
     window.addEventListener('blur', () => this.releaseAll());
     window.addEventListener('mousemove', (e) => this.onMouseMove(e.clientX));
-    canvas.addEventListener('pointerdown', (e) => this.onPointerDown(e));
-    canvas.addEventListener('pointermove', (e) => this.onPointerMove(e));
-    canvas.addEventListener('pointerup', (e) => this.onPointerUp(e));
-    canvas.addEventListener('pointercancel', (e) => this.onPointerUp(e));
+    // The whole screen (including letterbox bars) is the touch surface, but never
+    // steal events from overlay buttons.
+    const surface = canvas.parentElement ?? canvas;
+    const onSurface = (e: Event) => e.target === canvas || e.target === surface;
+    surface.addEventListener('pointerdown', (e) => onSurface(e) && this.onPointerDown(e));
+    window.addEventListener(
+      'pointerdown',
+      (e) => {
+        if (e.pointerType !== 'mouse') this.touchSeen = true;
+      },
+      true,
+    );
+    window.addEventListener('pointermove', (e) => this.onPointerMove(e));
+    window.addEventListener('pointerup', (e) => this.onPointerUp(e));
+    window.addEventListener('pointercancel', (e) => this.onPointerUp(e));
     window.addEventListener('mouseup', () => (this.mouseDown = false));
-    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-    // Stop iOS double-tap zoom / scroll on the play area.
-    canvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
-    canvas.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+    surface.addEventListener('contextmenu', (e) => onSurface(e) && e.preventDefault());
+    // Stop iOS double-tap zoom / scroll / long-press on the play area.
+    const block = (e: TouchEvent) => {
+      if (onSurface(e)) e.preventDefault();
+    };
+    surface.addEventListener('touchstart', block, { passive: false });
+    surface.addEventListener('touchmove', block, { passive: false });
     window.addEventListener('deviceorientation', (e) => this.onOrientation(e));
   }
 
@@ -133,15 +147,9 @@ export class Input {
       return;
     }
     this.touchSeen = true;
-    const r = this.canvas.getBoundingClientRect();
-    const side = e.clientX - r.left > r.width / 2 ? 'walk' : 'balance';
+    const side = e.clientX > window.innerWidth / 2 ? 'walk' : 'balance';
     this.touches.set(e.pointerId, { side, x0: e.clientX, x: e.clientX });
     if (side === 'balance' && !this.tiltEnabled) this.device = 'touch';
-    try {
-      this.canvas.setPointerCapture(e.pointerId);
-    } catch {
-      /* not all browsers allow capture here */
-    }
     this.emit('any');
   }
 

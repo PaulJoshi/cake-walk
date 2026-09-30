@@ -376,6 +376,10 @@ body {
   box-shadow: 0 calc(var(--px) * 1) 0 var(--shadow);
 }
 
+.cw-corner.no-pause [data-action='pause'] {
+  display: none;
+}
+
 #ui .cw-icon.off {
   text-decoration: line-through;
   opacity: 0.45;
@@ -441,7 +445,7 @@ body {
     position: fixed;
     left: 0;
     right: 0;
-    top: calc(env(safe-area-inset-top) + 16px);
+    bottom: calc(env(safe-area-inset-bottom) + 16px);
     padding: 12px;
     text-align: center;
     font-size: 11px;
@@ -449,8 +453,18 @@ body {
     color: var(--gold);
     pointer-events: none;
   }
+  /* In portrait the game is a thin strip: let the overlays use the whole screen. */
   #ui {
-    font-size: calc(var(--px) * 8);
+    --px: 1.4px;
+    left: 0;
+    top: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+  }
+  .cw-logo {
+    flex-direction: column;
+    gap: 6px;
   }
 }
 
