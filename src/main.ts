@@ -1,18 +1,28 @@
 import './style.css';
-import { Screen, VIEW_H, VIEW_W } from './render/Screen';
+import { Audio } from './audio/Audio';
+import { Game } from './game/Game';
+import { Input } from './input/Input';
+import { Renderer } from './render/Renderer';
+import { Screen } from './render/Screen';
+import { Overlays } from './ui/overlays';
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
-const screen = new Screen(canvas);
+const uiRoot = document.getElementById('ui') as HTMLElement;
+const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
-function frame(): void {
-  const ctx = screen.ctx;
-  ctx.fillStyle = '#3a1e2e';
-  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-  ctx.fillStyle = '#fff8ec';
-  ctx.font = '16px "Press Start 2P", monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText('CAKE WALK', VIEW_W / 2, VIEW_H / 2);
-  screen.present();
-  requestAnimationFrame(frame);
-}
-requestAnimationFrame(frame);
+const screen = new Screen(canvas);
+const renderer = new Renderer(reducedMotion);
+const input = new Input(canvas);
+const audio = new Audio();
+const ui = new Overlays(uiRoot);
+const game = new Game(screen, renderer, input, audio, ui);
+
+// Wait briefly for the pixel font so canvas text doesn't flash the fallback.
+const fontReady = document.fonts?.load('16px "Press Start 2P"').catch(() => undefined);
+Promise.race([fontReady, new Promise((r) => setTimeout(r, 1500))]).then(() => {
+  game.newRound('daily');
+  game.start();
+});
+
+// Expose for debugging and the smoke test.
+(window as unknown as { cakeWalk: Game }).cakeWalk = game;
