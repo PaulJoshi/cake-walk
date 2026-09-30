@@ -88,6 +88,23 @@ export class Renderer {
     for (let i = 0; i < 24; i++) this.decals.push({ x: -1e4, y: 0, w: 0, color: '#fff' });
   }
 
+  private cacheWorld: World | null = null;
+  private readonly cache = new Map<unknown, unknown>();
+
+  /** Cached obstacle lookup by class (no per-frame allocation). */
+  private ob<K>(w: World, cls: abstract new (...args: never[]) => K): K | undefined {
+    if (w !== this.cacheWorld) {
+      this.cache.clear();
+      this.cacheWorld = w;
+    }
+    if (!this.cache.has(cls))
+      this.cache.set(
+        cls,
+        w.obstacles.find((o) => o instanceof cls),
+      );
+    return this.cache.get(cls) as K | undefined;
+  }
+
   reset(w: World): void {
     this.camera.reset(w.waiter.x);
     this.particles.clear();
@@ -420,7 +437,7 @@ export class Renderer {
 
   // ---------------------------------------------------------------- pieces
   private drawSpill(ctx: CanvasRenderingContext2D, w: World, cam: number): void {
-    const s = w.obstacles.find((o): o is Spill => o instanceof Spill);
+    const s = this.ob(w, Spill);
     if (!s) return;
     const x0 = Math.round(s.x0 - cam);
     const x1 = Math.round(s.x1 - cam);
@@ -482,7 +499,7 @@ export class Renderer {
     const x = Math.round(LEVEL.DJ_X - cam);
     if (x < -90 || x > VIEW_W + 90) return;
     const base = depthY(1.6);
-    const bd = w.obstacles.find((o): o is BassDrop => o instanceof BassDrop);
+    const bd = this.ob(w, BassDrop);
     const pulse = bd && bd.dropped && bd.sinceDrop < 1.5 ? Math.sin(this.time * 30) : 0;
     // DJ behind the booth.
     const dj = this.sprites.guests[5];
@@ -596,12 +613,12 @@ export class Renderer {
   }
 
   private bouquetOn(w: World): boolean {
-    const b = w.obstacles.find((o): o is Bouquet => o instanceof Bouquet);
+    const b = this.ob(w, Bouquet);
     return !!b && b.state === 'landed';
   }
 
   private bouquetOffset(w: World): number {
-    const b = w.obstacles.find((o): o is Bouquet => o instanceof Bouquet);
+    const b = this.ob(w, Bouquet);
     return b ? Math.round(b.offset) : 0;
   }
 
@@ -722,7 +739,7 @@ export class Renderer {
   }
 
   private drawBouquetFlight(ctx: CanvasRenderingContext2D, w: World, cam: number): void {
-    const b = w.obstacles.find((o): o is Bouquet => o instanceof Bouquet);
+    const b = this.ob(w, Bouquet);
     if (!b || b.state !== 'flight') return;
     const p = b.progress;
     const sx = b.brideX;
@@ -865,9 +882,9 @@ export class Renderer {
       const bob = Math.round(Math.sin(this.time * 10) * 2);
       bubble(ctx, '!', x, y + bob, RED, INK, 0.6 + 0.4 * o.alert);
     }
-    const g = w.obstacles.find((o): o is Grandma => o instanceof Grandma);
+    const g = this.ob(w, Grandma);
     if (g && g.state === 'enter') bubble(ctx, '...', g.x - cam, depthY(g.depth) - 44, '#8e5bb5');
-    const c = w.obstacles.find((o): o is Conga => o instanceof Conga);
+    const c = this.ob(w, Conga);
     if (c && c.triggered && c.depthOf(T.CONGA_COUNT - 1, w.time) > 0.5)
       text(ctx, 'CONGA!', c.x - cam, depthY(1.4) - 64, 8, PINK);
     void DEPTH_PX;
