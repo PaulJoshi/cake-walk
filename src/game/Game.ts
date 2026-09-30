@@ -3,7 +3,8 @@ import type { Input } from '../input/Input';
 import type { Intent } from '../input/intent';
 import { ZONES } from '../level/level';
 import type { Renderer } from '../render/Renderer';
-import type { Screen } from '../render/Screen';
+import { VIEW_H, VIEW_W, type Screen } from '../render/Screen';
+import { grade, saveBest, score, type Mode, type RoundResult } from '../score/score';
 import type { Overlays } from '../ui/overlays';
 import { randomSeed, todaySeed } from './rng';
 import { Countdown } from './states/Countdown';
@@ -15,7 +16,7 @@ import { Title } from './states/Title';
 import { T } from './tuning';
 import { World } from './World';
 
-export type Mode = 'daily' | 'free';
+export type { Mode };
 
 export interface DrawOpts {
   attract?: boolean;
@@ -63,6 +64,7 @@ export class Game {
       result: new Result(),
     };
     this.state = this.states.title;
+    this.ui.bind(this);
     this.bindInput();
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.autoPause();
@@ -110,7 +112,8 @@ export class Game {
   private bindInput(): void {
     this.input.on((a) => {
       const s = this.state.name;
-      if (a === 'retry' && s !== 'title') this.newRound();
+      if (a === 'any' && s === 'title' && this.ui.screen === 'title') this.newRound('daily');
+      else if (a === 'retry' && s !== 'title') this.newRound();
       else if (a === 'pause') this.togglePause();
       else if (a === 'mute') this.ui.setMuted(this.audio.toggleMute());
       else if (a === 'fullscreen') this.ui.toggleFullscreen();
@@ -172,8 +175,37 @@ export class Game {
     this.screen.present();
   }
 
+  /** Build the round result, persist the best score and show the results overlay. */
   showResult(): void {
-    this.ui.showResult(this);
+    const w = this.world;
+    const r: RoundResult = {
+      outcome: w.outcome,
+      tiers: w.cake.count,
+      secondsLeft: w.finalTimeLeft,
+      clutches: w.clutches,
+      mode: this.mode,
+      seed: this.seed,
+    };
+    const isNew = w.won && saveBest(r);
+    this.ui.showResult(this, r, isNew, this.snapshot(r));
+  }
+
+  /** A 2x PNG-ready copy of the final frame with a caption, for sharing. */
+  private snapshot(r: RoundResult): HTMLCanvasElement {
+    const c = document.createElement('canvas');
+    c.width = VIEW_W * 2;
+    c.height = VIEW_H * 2;
+    const ctx = c.getContext('2d')!;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(this.screen.buffer, 0, 0, c.width, c.height);
+    ctx.fillStyle = 'rgba(26,15,31,0.85)';
+    ctx.fillRect(0, c.height - 40, c.width, 40);
+    ctx.font = '16px "Press Start 2P", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ffd36b';
+    ctx.fillText(`CAKE WALK · GRADE ${grade(r)} · ${score(r)}`, c.width / 2, c.height - 20);
+    return c;
   }
 
   private frame(now: number): void {

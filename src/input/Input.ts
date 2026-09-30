@@ -9,6 +9,22 @@ export type InputAction = 'retry' | 'pause' | 'mute' | 'any' | 'fullscreen' | `z
 const WALK_KEYS = new Set(['Space', 'KeyW', 'ArrowUp']);
 const LEFT_KEYS = new Set(['KeyA', 'ArrowLeft']);
 const RIGHT_KEYS = new Set(['KeyD', 'ArrowRight']);
+/** Keys that never count as "press any key to start". */
+const NOT_ANY = new Set([
+  'KeyM',
+  'KeyF',
+  'Tab',
+  'ShiftLeft',
+  'ShiftRight',
+  'Escape',
+  'KeyP',
+  'MetaLeft',
+  'MetaRight',
+  'AltLeft',
+  'AltRight',
+  'ControlLeft',
+  'ControlRight',
+]);
 /** Tilt angle (degrees) that maps to a full tray offset. */
 const TILT_RANGE = 16;
 /** Horizontal drag distance (CSS px) that maps to a full tray offset on touch. */
@@ -95,8 +111,7 @@ export class Input {
       else if (code === 'KeyM') this.emit('mute');
       else if (code === 'KeyF') this.emit('fullscreen');
       else if (/^Digit\d$/.test(code)) this.emit(`zone${Number(code.slice(5))}`);
-      if (code !== 'KeyM' && code !== 'KeyF' && !e.metaKey && !e.ctrlKey && !e.altKey)
-        this.emit('any');
+      if (!NOT_ANY.has(code) && !e.metaKey && !e.ctrlKey && !e.altKey) this.emit('any');
     } else this.keys.delete(code);
   }
 

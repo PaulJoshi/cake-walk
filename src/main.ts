@@ -20,8 +20,8 @@ const game = new Game(screen, renderer, input, audio, ui);
 // Wait briefly for the pixel font so canvas text doesn't flash the fallback.
 const fontReady = document.fonts?.load('16px "Press Start 2P"').catch(() => undefined);
 Promise.race([fontReady, new Promise((r) => setTimeout(r, 1500))]).then(() => {
-  game.newRound('daily');
-  game.start();
+  game.start(game.botPlay ? undefined : 'title');
+  if (game.botPlay) game.newRound('daily');
 });
 
 // Expose for debugging and the smoke test.
