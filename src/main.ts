@@ -1,10 +1,14 @@
 import './style.css';
+import { inject } from '@vercel/analytics';
 import { Audio } from './audio/Audio';
 import { Game } from './game/Game';
 import { Input } from './input/Input';
 import { Renderer } from './render/Renderer';
 import { Screen } from './render/Screen';
 import { Overlays } from './ui/overlays';
+
+// Vercel Web Analytics (page views). No-ops in dev; data flows once deployed on Vercel.
+inject();
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const uiRoot = document.getElementById('ui') as HTMLElement;
