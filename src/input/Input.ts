@@ -31,6 +31,32 @@ const TILT_RANGE = 16;
 const DRAG_RANGE = 70;
 /** Mouse: the central fraction of the canvas width spans the full tray range. */
 const MOUSE_SPAN = 0.8;
+/** localStorage key for an explicit tilt on/off choice ('1' / '0'). */
+const TILT_KEY = 'cakewalk.tilt';
+
+type PermissionDOE = { requestPermission?: () => Promise<'granted' | 'denied'> };
+
+/** iOS Safari: orientation events need a permission prompt from a user tap. */
+const tiltNeedsPermission = (): boolean =>
+  typeof (window.DeviceOrientationEvent as unknown as PermissionDOE | undefined)
+    ?.requestPermission === 'function';
+
+function loadTiltPref(): boolean | null {
+  try {
+    const v = localStorage.getItem(TILT_KEY);
+    return v === '1' ? true : v === '0' ? false : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveTiltPref(on: boolean): void {
+  try {
+    localStorage.setItem(TILT_KEY, on ? '1' : '0');
+  } catch {
+    /* storage unavailable */
+  }
+}
 
 interface TouchInfo {
   side: 'walk' | 'balance';
@@ -48,6 +74,7 @@ export class Input {
   readonly intent: Intent = createIntent();
   device: BalanceDevice = 'mouse';
   enabled = true;
+  /** The player wants tilt; it steers once the device reports orientation. */
   tiltEnabled = false;
   /** True once any touch has been seen (show touch hints). */
   touchSeen = false;
@@ -61,6 +88,8 @@ export class Input {
   private tiltRaw = 0;
   private tiltZero = 0;
   private tiltSeen = false;
+  /** iOS permission prompt state for this page load. */
+  private tiltAsked = false;
   private listeners: ((a: InputAction) => void)[] = [];
 
   constructor(private readonly canvas: HTMLCanvasElement) {
@@ -92,6 +121,34 @@ export class Input {
     surface.addEventListener('touchstart', block, { passive: false });
     surface.addEventListener('touchmove', block, { passive: false });
     window.addEventListener('deviceorientation', (e) => this.onOrientation(e));
+    // Phones default to tilt unless the player turned it off. Where no permission is
+    // needed (Android) it starts right away; iOS asks on the first tap (see askTiltOnFirstTap).
+    if (this.tiltSupported && loadTiltPref() !== false && !tiltNeedsPermission())
+      this.tiltEnabled = true;
+  }
+
+  /** A touch-first device that can report orientation. */
+  get tiltSupported(): boolean {
+    return (
+      (window.matchMedia?.('(pointer: coarse)').matches ?? false) &&
+      'DeviceOrientationEvent' in window
+    );
+  }
+
+  /** Tilt is on and actually steering (orientation data has arrived). */
+  get tiltActive(): boolean {
+    return this.tiltEnabled && this.tiltSeen;
+  }
+
+  /** True until the first tap on a phone that needs the iOS motion permission prompt. */
+  get askTiltOnFirstTap(): boolean {
+    return (
+      !this.tiltAsked &&
+      !this.tiltEnabled &&
+      this.tiltSupported &&
+      tiltNeedsPermission() &&
+      loadTiltPref() !== false
+    );
   }
 
   on(fn: (a: InputAction) => void): void {
@@ -190,12 +247,16 @@ export class Input {
     return this.tiltSeen;
   }
 
-  /** iOS needs a user gesture + permission for device orientation. */
-  async enableTilt(): Promise<boolean> {
-    const DOE = window.DeviceOrientationEvent as unknown as
-      { requestPermission?: () => Promise<'granted' | 'denied'> } | undefined;
+  /**
+   * Turn tilt on. On iOS this shows the motion permission prompt, so call it straight from
+   * a tap handler. `remember` stores the choice (an explicit toggle, not the default).
+   */
+  async enableTilt(remember = false): Promise<boolean> {
+    if (remember) saveTiltPref(true);
+    const DOE = window.DeviceOrientationEvent as unknown as PermissionDOE | undefined;
     try {
       if (DOE && typeof DOE.requestPermission === 'function') {
+        this.tiltAsked = true;
         const res = await DOE.requestPermission();
         if (res !== 'granted') return false;
       }
@@ -203,9 +264,30 @@ export class Input {
       return false;
     }
     this.tiltEnabled = true;
-    this.device = 'tilt';
+    if (this.tiltSeen) this.device = 'tilt';
     this.calibrateTilt();
     return true;
+  }
+
+  /** Turn tilt off and balance by dragging; remembered so phones stop defaulting to it. */
+  disableTilt(): void {
+    saveTiltPref(false);
+    this.tiltEnabled = false;
+    if (this.device === 'tilt') this.device = 'touch';
+  }
+
+  /** Resolves true once orientation data arrives, false after `ms` without any. */
+  waitForTilt(ms = 1000): Promise<boolean> {
+    if (this.tiltSeen) return Promise.resolve(true);
+    return new Promise((res) => {
+      const t0 = performance.now();
+      const poll = () => {
+        if (this.tiltSeen) res(true);
+        else if (performance.now() - t0 > ms) res(false);
+        else window.setTimeout(poll, 100);
+      };
+      poll();
+    });
   }
 
   /** Zero the tilt at the current angle (called at countdown). */

@@ -64,19 +64,27 @@ export class Overlays {
     this.toast = root.querySelector('.cw-toast')!;
     root.addEventListener('click', (e) => {
       const el = (e.target as HTMLElement).closest<HTMLElement>('[data-action]');
+      let a: Action | null = null;
       if (el) {
         e.stopPropagation();
-        this.act(el.dataset.action as Action);
-      } else if (this.panel.dataset.screen === 'title' && e.target === this.panel) {
-        this.act('daily');
-      }
+        a = el.dataset.action as Action;
+      } else if (this.panel.dataset.screen === 'title' && e.target === this.panel) a = 'daily';
+      if (!a) return;
+      // iOS: the first tap on the title asks for motion access (it must come from a tap),
+      // then carries on with whatever was tapped.
+      if (a !== 'tilt' && this.screen === 'title' && this.game?.input.askTiltOnFirstTap) {
+        const act = a;
+        void this.askTilt().then(() => this.act(act));
+      } else this.act(a);
     });
-    // Any touch on the title background starts too.
+    // Any touch on the title background starts too. The iOS permission prompt only works
+    // from a click, so that first tap is left to the click handler.
     this.panel.addEventListener('pointerdown', (e) => {
       if (
         e.pointerType !== 'mouse' &&
         e.target === this.panel &&
-        this.panel.dataset.screen === 'title'
+        this.panel.dataset.screen === 'title' &&
+        !this.game?.input.askTiltOnFirstTap
       )
         this.act('daily');
     });
@@ -124,16 +132,49 @@ export class Overlays {
         this.toggleFullscreen();
         break;
       case 'tilt':
-        void g.input.enableTilt().then((ok) => {
-          this.flash(ok ? 'Tilt controls on!' : 'Tilt not available');
-          const b = this.panel.querySelector<HTMLButtonElement>('[data-action="tilt"]');
-          if (b && ok) b.textContent = 'Tilt: ON';
-        });
+        void this.toggleTilt();
         break;
       case 'share':
         void this.share();
         break;
     }
+  }
+
+  /** The default ask on phones that need permission: on if allowed, drag if not. */
+  private async askTilt(): Promise<void> {
+    const ok = await this.game!.input.enableTilt();
+    this.flash(ok ? 'Tilt controls on!' : 'Tilt off. Drag the left side to balance');
+    this.refreshTilt();
+  }
+
+  /** The Tilt button on the title and pause screens. Asks for permission again if needed. */
+  private async toggleTilt(): Promise<void> {
+    const input = this.game!.input;
+    if (input.tiltEnabled) {
+      input.disableTilt();
+      this.flash('Tilt off. Drag the left side to balance');
+    } else if (!(await input.enableTilt(true))) {
+      this.flash('Motion access blocked. Reload the page and tap Allow');
+    } else if (!(await input.waitForTilt())) {
+      this.flash('No tilt data. Check your motion sensor settings');
+    } else {
+      this.flash('Tilt controls on!');
+    }
+    this.refreshTilt();
+  }
+
+  private tiltButton(): string {
+    if (!this.game?.input.tiltSupported) return '';
+    const on = this.game.input.tiltEnabled;
+    return `<button data-action="tilt" aria-pressed="${on}">Tilt: ${on ? 'ON' : 'OFF'}</button>`;
+  }
+
+  private refreshTilt(): void {
+    const b = this.panel.querySelector<HTMLButtonElement>('[data-action="tilt"]');
+    if (!b || !this.game) return;
+    const on = this.game.input.tiltEnabled;
+    b.textContent = `Tilt: ${on ? 'ON' : 'OFF'}`;
+    b.setAttribute('aria-pressed', String(on));
   }
 
   private open(screen: string, html: string): void {
@@ -161,13 +202,6 @@ export class Overlays {
 
   showTitle(): void {
     const touch = matchMedia('(pointer: coarse)').matches;
-    const needsTiltPermission =
-      typeof (window.DeviceOrientationEvent as unknown as { requestPermission?: unknown })
-        ?.requestPermission === 'function';
-    const tilt =
-      touch && (needsTiltPermission || 'DeviceOrientationEvent' in window)
-        ? `<button data-action="tilt">${this.game?.input.tiltEnabled ? 'Tilt: ON' : 'Enable tilt controls'}</button>`
-        : '';
     this.open(
       'title',
       `<div class="cw-title">
@@ -182,7 +216,7 @@ export class Overlays {
           <button data-action="controls">Controls</button>
           <button data-action="mute">${this.muted ? 'Unmute' : 'Mute'}</button>
           <button data-action="fullscreen">Fullscreen</button>
-          ${tilt}
+          ${this.tiltButton()}
         </div>
         <p class="cw-best">Daily best ${this.bestLine('daily')} &nbsp; Free best ${this.bestLine('free')}</p>
         <p class="cw-hint">${touch ? 'Tap anywhere to start' : 'Press any key to start'}</p>
@@ -216,6 +250,7 @@ export class Overlays {
           <button data-action="retry">Retry (R)</button>
           <button data-action="title">Title</button>
         </div>
+        ${this.game?.input.tiltSupported ? `<div class="cw-buttons small">${this.tiltButton()}</div>` : ''}
       </div>`,
     );
   }
@@ -225,7 +260,7 @@ export class Overlays {
     if (on) {
       this.touch.classList.remove('fade');
       window.setTimeout(() => this.touch.classList.add('fade'), 4000);
-      const tilt = this.game?.input.tiltEnabled;
+      const tilt = this.game?.input.tiltActive;
       const l = this.touch.querySelector('.cw-touch-l span');
       if (l) l.innerHTML = tilt ? 'TILT<br>TO BALANCE' : 'DRAG<br>TO BALANCE';
     }
