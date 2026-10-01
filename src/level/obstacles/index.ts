@@ -14,7 +14,7 @@ export { BassDrop, Bouquet, Conga, Grandma, Roomba, Spill, Toddler, Uncle };
 /** Build the level's obstacles in a fixed order so a seed always gives the same variation. */
 export function buildObstacles(rng: Rng): Obstacle[] {
   return [
-    new Spill(),
+    new Spill(rng),
     new Uncle(rng),
     new Roomba(rng),
     new Toddler(rng),

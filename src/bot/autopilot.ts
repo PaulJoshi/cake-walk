@@ -2,6 +2,7 @@ import type { World } from '../game/World';
 import { createIntent, type Intent } from '../input/intent';
 import { LEVEL } from '../level/level';
 import { Grandma } from '../level/obstacles/grandma';
+import { Spill } from '../level/obstacles/spill';
 import type { Span } from '../level/obstacles/types';
 
 const DEG = Math.PI / 180;
@@ -102,7 +103,8 @@ export class Autopilot {
     }
 
     // Don't come to a stop on the champagne.
-    if (wt.x > LEVEL.SPILL.x0 - 5 && wt.x < LEVEL.SPILL.x1 + 5 && wt.v > 20) {
+    const spill = w.obstacles.find((o) => o instanceof Spill) as Spill;
+    if (wt.x > spill.x0 - 5 && wt.x < spill.x1 + 5 && wt.v > 20) {
       if (this.safe(w, true)) return true;
     }
 

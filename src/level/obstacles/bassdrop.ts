@@ -4,10 +4,12 @@ import { T } from '../../game/tuning';
 import { LEVEL } from '../level';
 import type { Obstacle } from './types';
 
-/** Global event: the DJ counts down 3-2-1 and drops the bass at 20 s remaining. */
+/** Global event: the DJ counts down 3-2-1 and drops the bass around 20 s remaining. */
 export class BassDrop implements Obstacle {
   readonly kind = 'bassdrop';
   readonly dir: number;
+  /** Seconds remaining when the bass drops (seeded around LEVEL.BASS_DROP_AT). */
+  readonly dropAt: number;
   alert = 0;
   alertX = LEVEL.DJ_X;
   alertY = 0;
@@ -19,11 +21,12 @@ export class BassDrop implements Obstacle {
 
   constructor(rng: Rng) {
     this.dir = rng.sign();
+    this.dropAt = LEVEL.BASS_DROP_AT + rng.range(-T.BASS_DROP_SHIFT, T.BASS_DROP_SHIFT);
   }
 
   update(w: World, dt: number): void {
     const left = w.timeLeft;
-    const at = LEVEL.BASS_DROP_AT;
+    const at = this.dropAt;
     if (this.dropped) {
       this.sinceDrop += dt;
       this.alert = 0;

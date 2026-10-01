@@ -26,7 +26,7 @@ export class Roomba implements Obstacle {
   private cooldown = 0;
 
   constructor(rng: Rng) {
-    this.cx = LEVEL.ROOMBA_X + rng.range(-20, 20);
+    this.cx = LEVEL.ROOMBA_X + rng.range(-T.ROOMBA_SHIFT, T.ROOMBA_SHIFT);
     this.rx = rng.range(T.ROOMBA_RX_MIN, T.ROOMBA_RX_MAX);
     this.spin = (rng.sign() * Math.PI * 2) / rng.range(T.ROOMBA_PERIOD_MIN, T.ROOMBA_PERIOD_MAX);
     this.phase = rng.range(0, Math.PI * 2);
