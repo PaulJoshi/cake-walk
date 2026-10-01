@@ -119,8 +119,10 @@ npm run dev        # http://localhost:5173
 - **Vite + strict TypeScript + Canvas 2D.** No engine, no framework, no runtime dependencies.
   The whole game is ~30 KB gzipped.
 - **Fixed 120 Hz simulation** with an accumulator; rendering every animation frame; frame dt
-  clamped to 100 ms. 480×270 back buffer, integer-scaled when it fills the screen, letterboxed,
-  `imageSmoothingEnabled = false`, devicePixelRatio aware.
+  clamped to 100 ms. The back buffer matches the window's aspect ratio, so the game fills every
+  screen: landscape shows the full 270 px scene height and a wider slice of the hall, portrait
+  shows 300 px across with more wall above and floor below. Integer-scaled when that is close
+  to the ideal fit, `imageSmoothingEnabled = false`, devicePixelRatio aware.
 - **Physics** (`src/physics/`, pure and unit-tested): the cake is an inverted pendulum on the
   tray, `θ'' = (G/L)·sinθ − (aTray/L)·cosθ − DAMP·ω − GLUE·θ + impulses`, with `L` recomputed
   from the tiers still standing (so losing tiers makes the cake twitchier). Each tier slides on

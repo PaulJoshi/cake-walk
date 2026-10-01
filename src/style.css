@@ -1,10 +1,6 @@
 :root {
   --font: 'Press Start 2P', ui-monospace, 'Courier New', monospace;
   --px: 2px;
-  --game-w: 960px;
-  --game-h: 540px;
-  --game-left: 0px;
-  --game-top: 0px;
   --ink: #fff8ec;
   --shadow: #1a0f1f;
   --pink: #ff6fa8;
@@ -48,19 +44,18 @@ body {
 
 #game {
   position: absolute;
+  left: 0;
+  top: 0;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   touch-action: none;
   display: block;
 }
 
-/* The UI layer sits exactly on top of the game area and scales with it. */
+/* The UI layer covers the whole window, like the game, and scales with game pixels. */
 #ui {
   position: absolute;
-  left: var(--game-left);
-  top: var(--game-top);
-  width: var(--game-w);
-  height: var(--game-h);
+  inset: 0;
   pointer-events: none;
   font-size: calc(var(--px) * 8);
   line-height: 1.5;
@@ -435,36 +430,12 @@ body {
   opacity: 1;
 }
 
-.cw-rotate {
-  display: none;
-}
-
-@media (orientation: portrait) and (pointer: coarse) {
-  .cw-rotate {
-    display: block;
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: calc(env(safe-area-inset-bottom) + 16px);
-    padding: 12px;
-    text-align: center;
-    font-size: 11px;
-    line-height: 1.6;
-    color: var(--gold);
-    pointer-events: none;
-  }
-  /* In portrait the game is a thin strip: let the overlays use the whole screen. */
-  #ui {
-    --px: 1.4px;
-    left: 0;
-    top: 0;
-    width: 100vw;
-    height: 100vh;
-    height: 100dvh;
-  }
+/* Portrait: stack the logo so it fits the narrow view. */
+@media (orientation: portrait) {
   .cw-logo {
     flex-direction: column;
-    gap: 6px;
+    align-items: center;
+    gap: calc(var(--px) * 4);
   }
 }
 

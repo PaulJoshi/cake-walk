@@ -3,7 +3,7 @@ import type { Input } from '../input/Input';
 import type { Intent } from '../input/intent';
 import { ZONES } from '../level/level';
 import type { Renderer } from '../render/Renderer';
-import { VIEW_H, VIEW_W, type Screen } from '../render/Screen';
+import { view, type Screen } from '../render/Screen';
 import { grade, saveBest, score, type Mode, type RoundResult } from '../score/score';
 import type { Overlays } from '../ui/overlays';
 import { randomSeed, todaySeed } from './rng';
@@ -193,8 +193,8 @@ export class Game {
   /** A 2x PNG-ready copy of the final frame with a caption, for sharing. */
   private snapshot(r: RoundResult): HTMLCanvasElement {
     const c = document.createElement('canvas');
-    c.width = VIEW_W * 2;
-    c.height = VIEW_H * 2;
+    c.width = view.w * 2;
+    c.height = view.h * 2;
     const ctx = c.getContext('2d')!;
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(this.screen.buffer, 0, 0, c.width, c.height);

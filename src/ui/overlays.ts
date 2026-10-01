@@ -57,8 +57,7 @@ export class Overlays {
         <button class="cw-icon" data-action="mute" aria-label="Mute (M)" title="Mute (M)">♪</button>
         <button class="cw-icon" data-action="fullscreen" aria-label="Fullscreen (F)" title="Fullscreen (F)">⛶</button>
       </div>
-      <div class="cw-toast" role="status" aria-live="polite"></div>
-      <div class="cw-rotate" aria-hidden="true">Rotate for the best cake-carrying experience ↻</div>`;
+      <div class="cw-toast" role="status" aria-live="polite"></div>`;
     this.panel = root.querySelector('.cw-panel')!;
     this.corner = root.querySelector('.cw-corner')!;
     this.touch = root.querySelector('.cw-touch')!;
@@ -254,14 +253,7 @@ export class Overlays {
         if (document.exitFullscreen) void document.exitFullscreen();
         else d.webkitExitFullscreen?.();
       } else if (el.requestFullscreen) {
-        void el
-          .requestFullscreen({ navigationUI: 'hide' })
-          .then(() =>
-            (
-              screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }
-            )?.lock?.('landscape'),
-          )
-          .catch(() => undefined);
+        void el.requestFullscreen({ navigationUI: 'hide' }).catch(() => undefined);
       } else el.webkitRequestFullscreen?.();
     } catch {
       /* fullscreen not available */
