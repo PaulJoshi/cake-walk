@@ -2,6 +2,34 @@
 
 > **60 seconds to save the wedding.** Hold to walk. Move to balance.
 
+```text
+   *      .      *         .       *       .      *
+        .    *       .        *        .     *
+
+                   .-=========-.
+                   \'-=======-'/
+                   _|   .=.   |_
+                  ((|  {{1}}  |))
+                   \|   /|\   |/
+                    \__ '`' __/
+                      _`) (`_
+                    _/_______\_
+                   /___________\
+
+                .-----------------.
+                |    * WINNER *   |
+          .-----'-----------------'-----.
+          |    TINKERHUB   KOCHI        |
+          |   DEVIN EVENT - 1ST PRIZE   |
+     .----'-----------------------------'----.
+     |  7 TIERS . 60 SECONDS . 0 DROPPED     |
+     '---------------------------------------'
+    (_______________________________________)
+```
+
+<p align="center"><b>🏆 1st prize winner at the <a href="http://luma.com/fivtwyix">TinkerHub x Devin event in Kochi</a> 🏆</b><br/>
+<i>Seven tiers, sixty seconds, and not a single cake dropped.</i></p>
+
 You are a nervous waiter carrying a 7-tier wedding cake from the kitchen to the cake table
 across a chaotic reception. The best man's toast happens at 0:00. If the cake isn't on the table
 by then, or if it falls, the wedding is ruined.
