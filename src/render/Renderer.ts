@@ -17,7 +17,7 @@ import { CakeCanvas, PIVOT_X, PIVOT_Y, tierSprite } from './cakeArt';
 import { Camera } from './Camera';
 import { bubble, GOLD, INK, PINK, pixelLine, RED, text } from './draw';
 import { FloatTexts, Particles, Shake } from './particles';
-import { VIEW_H, VIEW_W } from './Screen';
+import { view } from './Screen';
 import { buildSprites, type PersonSprites, type Sprite, type SpriteBank } from './sprites';
 import { drawHud, type HudOptions } from './hud';
 import { drawDebug } from './debug';
@@ -51,7 +51,7 @@ export interface RenderOptions extends HudOptions {
   fps: number;
 }
 
-/** Draws a World into the 480x270 back buffer. Owns all cosmetic state (FX, camera). */
+/** Draws a World into the view-sized back buffer. Owns all cosmetic state (FX, camera). */
 export class Renderer {
   readonly sprites: SpriteBank;
   readonly camera = new Camera();
@@ -216,8 +216,8 @@ export class Renderer {
         break;
       case 'clutch':
         this.clutchFlash = 1;
-        this.texts.spawn('CLUTCH!', VIEW_W / 2, 70, GOLD, 24, 1.3, true);
-        this.texts.spawn(`+${T.CLUTCH_POINTS}`, VIEW_W / 2, 92, INK, 8, 1.3, true);
+        this.texts.spawn('CLUTCH!', view.w / 2, 70, GOLD, 24, 1.3, true);
+        this.texts.spawn(`+${T.CLUTCH_POINTS}`, view.w / 2, 92, INK, 8, 1.3, true);
         break;
       case 'gasp':
         this.gaspBubbles = 1.4;
@@ -254,7 +254,7 @@ export class Renderer {
         break;
       case 'bassDrop':
         this.shake.add(0.9);
-        this.texts.spawn('BASS DROP!', VIEW_W / 2, 64, '#b98cff', 24, 1.2, true);
+        this.texts.spawn('BASS DROP!', view.w / 2, 64, '#b98cff', 24, 1.2, true);
         break;
       case 'bouquetLand':
         for (let i = 0; i < 14; i++)
@@ -380,9 +380,10 @@ export class Renderer {
   draw(ctx: CanvasRenderingContext2D, w: World, opts: RenderOptions): void {
     const cam = Math.round(this.camera.x);
     ctx.save();
-    ctx.translate(this.shake.ox, this.shake.oy);
     ctx.fillStyle = '#1a0f1f';
-    ctx.fillRect(-8, -8, VIEW_W + 16, VIEW_H + 16);
+    ctx.fillRect(0, 0, view.w, view.h);
+    // Everything below is drawn in scene coordinates, placed inside the (possibly taller) view.
+    ctx.translate(this.shake.ox, this.shake.oy + view.sceneY);
     this.bg.drawFar(ctx, cam, this.time);
     this.bg.drawFloor(ctx, cam, this.time);
     this.bg.drawMid(ctx, cam, this.time, this.gaspBubbles > 0);
@@ -391,7 +392,7 @@ export class Renderer {
     this.drawSpill(ctx, w, cam);
     for (const d of this.decals) {
       const x = Math.round(d.x - cam);
-      if (x < -30 || x > VIEW_W + 30) continue;
+      if (x < -30 || x > view.w + 30) continue;
       ctx.fillStyle = d.color;
       ctx.fillRect(x - Math.round(d.w / 2), Math.round(d.y), Math.round(d.w), 2);
       ctx.fillRect(x - Math.round(d.w / 3), Math.round(d.y) - 1, Math.round((d.w * 2) / 3), 1);
@@ -419,20 +420,23 @@ export class Renderer {
     if (!w.finished && !opts.attract) this.drawLeanMeter(ctx, w, cam);
     ctx.restore();
 
+    ctx.save();
+    ctx.translate(0, view.sceneY);
     this.texts.draw(ctx, cam, (s) => `${s}px "Press Start 2P", monospace`);
     if (this.gaspBubbles > 0 && !w.finished) {
       const n = this.bg.visibleGuests(cam, this.guestXs);
       for (let i = 0; i < n; i += 2)
         bubble(ctx, i % 4 ? 'OOOH!' : 'OH NO!', this.guestXs[i], 150 + (i % 3) * 4, '#9b2d5a');
     }
+    if (opts.debug) drawDebug(ctx, w, cam, opts.fps);
+    ctx.restore();
     if (this.clutchFlash > 0) {
       ctx.globalAlpha = this.clutchFlash * 0.25;
       ctx.fillStyle = GOLD;
-      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+      ctx.fillRect(0, 0, view.w, view.h);
       ctx.globalAlpha = 1;
     }
     drawHud(ctx, w, opts, this.time);
-    if (opts.debug) drawDebug(ctx, w, cam, opts.fps);
   }
 
   // ---------------------------------------------------------------- pieces
@@ -441,7 +445,7 @@ export class Renderer {
     if (!s) return;
     const x0 = Math.round(s.x0 - cam);
     const x1 = Math.round(s.x1 - cam);
-    if (x1 < 0 || x0 > VIEW_W) return;
+    if (x1 < 0 || x0 > view.w) return;
     const y = FLOOR_Y - 3;
     ctx.globalAlpha = 0.55;
     ctx.fillStyle = '#ffe7a0';
@@ -497,7 +501,7 @@ export class Renderer {
 
   private drawDJ(ctx: CanvasRenderingContext2D, w: World, cam: number): void {
     const x = Math.round(LEVEL.DJ_X - cam);
-    if (x < -90 || x > VIEW_W + 90) return;
+    if (x < -90 || x > view.w + 90) return;
     const base = depthY(1.6);
     const bd = this.ob(w, BassDrop);
     const pulse = bd && bd.dropped && bd.sinceDrop < 1.5 ? Math.sin(this.time * 30) : 0;
@@ -553,7 +557,7 @@ export class Renderer {
 
   private drawTable(ctx: CanvasRenderingContext2D, w: World, cam: number): void {
     const x = Math.round(LEVEL.TABLE.x - cam);
-    if (x < -100 || x > VIEW_W + 100) return;
+    if (x < -100 || x > view.w + 100) return;
     const base = depthY(0.6);
     // Floral arch.
     const archBase = depthY(1.0);
@@ -648,7 +652,7 @@ export class Renderer {
       if (o instanceof Uncle) {
         if (!behind) continue;
         const x = o.x - cam;
-        if (x < -40 || x > VIEW_W + 40) continue;
+        if (x < -40 || x > view.w + 40) continue;
         const hip = o.hipPose(w.time);
         const out = Math.abs(hip) >= 1;
         const depth = out ? 0.35 : 0.9;
@@ -671,7 +675,7 @@ export class Renderer {
         const inFront = o.depth < 0.05;
         if (behind === inFront) continue;
         const x = o.x - cam;
-        if (x < -20 || x > VIEW_W + 20) continue;
+        if (x < -20 || x > view.w + 20) continue;
         const y = depthY(o.depth);
         const sprite =
           o.inLaneAt(w.time + 0.6) || o.depth < 0.45
@@ -694,7 +698,7 @@ export class Renderer {
       } else if (o instanceof Grandma) {
         if (!behind || o.state === 'hidden' || o.state === 'gone') continue;
         const x = o.x - cam;
-        if (x < -30 || x > VIEW_W + 30) continue;
+        if (x < -30 || x > view.w + 30) continue;
         const feet = depthY(o.depth);
         const step = Math.floor(this.time * 3) % 2 === 0;
         this.person(ctx, this.sprites.grandma, x, feet, step);
@@ -712,7 +716,7 @@ export class Renderer {
       } else if (o instanceof Bouquet) {
         if (!behind) continue;
         const x = o.brideX - cam;
-        if (x < -30 || x > VIEW_W + 30) continue;
+        if (x < -30 || x > view.w + 30) continue;
         const feet = depthY(1.3);
         this.person(ctx, this.sprites.bride, x, feet, false);
         // Veil.
@@ -729,7 +733,7 @@ export class Renderer {
           const d = o.depthOf(i, w.time);
           if (d < -2 || (behind ? d < 0 : d >= 0)) continue;
           const x = o.x - cam + Math.sin(this.time * 6 + i) * 2;
-          if (x < -30 || x > VIEW_W + 30) continue;
+          if (x < -30 || x > view.w + 30) continue;
           const g = this.sprites.guests[(i * 5 + 2) % this.sprites.guests.length];
           const kick = Math.floor(this.time * 4 + i) % 2 === 0;
           this.person(ctx, g, x, depthY(d), kick, kick ? 0.5 : -0.5);
@@ -878,7 +882,7 @@ export class Renderer {
       if (o instanceof Toddler) y = depthY(1.3) - 34;
       if (o instanceof Conga) y = depthY(1.4) - 50;
       const x = o.alertX - cam;
-      if (x < -10 || x > VIEW_W + 10) continue;
+      if (x < -10 || x > view.w + 10) continue;
       const bob = Math.round(Math.sin(this.time * 10) * 2);
       bubble(ctx, '!', x, y + bob, RED, INK, 0.6 + 0.4 * o.alert);
     }

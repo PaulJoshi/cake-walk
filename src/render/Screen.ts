@@ -1,11 +1,25 @@
-export const VIEW_W = 480;
-export const VIEW_H = 270;
+/** Height of the authored scene (wall + floor) in game pixels. */
+export const SCENE_H = 270;
+/** Narrowest view, used on portrait screens: enough lane to see what is coming. */
+export const MIN_VIEW_W = 300;
+/** Widest view, for ultra-wide windows (wider ones crop the scene top and bottom). */
+export const MAX_VIEW_W = 960;
+/** Share of any spare height that goes above the scene (the rest extends the floor). */
+const HEADROOM = 0.45;
 
 /**
- * Owns the visible canvas and a fixed 480x270 back buffer. The game draws into the back
- * buffer; `present()` blits it to the visible canvas with nearest-neighbour scaling.
- * Integer scaling is used when it fills most of the window, otherwise fractional scaling,
- * and the rest is letterboxed.
+ * The visible area in game pixels. It always matches the window's aspect ratio, so the game
+ * fills the screen: landscape windows see the full scene height and a wider slice of the
+ * hall, portrait windows see MIN_VIEW_W across with extra wall above and floor below.
+ * `sceneY` is where scene y = 0 sits inside the view.
+ */
+export const view = { w: 480, h: SCENE_H, sceneY: 0 };
+
+/**
+ * Owns the visible canvas and the back buffer. The game draws into the back buffer at
+ * `view` size; `present()` blits it to the visible canvas with nearest-neighbour scaling.
+ * Integer scaling is used when it is close to the ideal fit, otherwise fractional; either
+ * way the buffer is sized to cover the whole window, so there is no letterboxing.
  */
 export class Screen {
   readonly buffer: HTMLCanvasElement;
@@ -13,20 +27,16 @@ export class Screen {
   private readonly out: CanvasRenderingContext2D;
   /** Size of one game pixel in CSS pixels. */
   cssScale = 1;
-  /** Offset of the game area inside the window, in CSS pixels. */
-  cssLeft = 0;
-  cssTop = 0;
+  /** Size of one game pixel in device pixels. */
+  private devScale = 1;
 
   constructor(readonly canvas: HTMLCanvasElement) {
     this.buffer = document.createElement('canvas');
-    this.buffer.width = VIEW_W;
-    this.buffer.height = VIEW_H;
     const ctx = this.buffer.getContext('2d', { alpha: false });
     const out = canvas.getContext('2d', { alpha: false });
     if (!ctx || !out) throw new Error('Canvas 2D is not supported');
     this.ctx = ctx;
     this.out = out;
-    this.ctx.imageSmoothingEnabled = false;
     this.resize();
     window.addEventListener('resize', () => this.resize());
     window.visualViewport?.addEventListener('resize', () => this.resize());
@@ -37,42 +47,42 @@ export class Screen {
     const winW = vv?.width ?? window.innerWidth;
     const winH = vv?.height ?? window.innerHeight;
     const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 3));
-    const fit = Math.min((winW * dpr) / VIEW_W, (winH * dpr) / VIEW_H);
+    const devW = Math.max(1, Math.round(winW * dpr));
+    const devH = Math.max(1, Math.round(winH * dpr));
+    // Fit the scene height, but never show less than MIN_VIEW_W or more than MAX_VIEW_W across.
+    const fit = Math.max(Math.min(devH / SCENE_H, devW / MIN_VIEW_W), devW / MAX_VIEW_W);
     const intScale = Math.floor(fit);
-    // Integer scaling where it fills at least 85% of the fit; otherwise fractional.
-    const devScale = intScale >= 1 && intScale / fit >= 0.85 ? intScale : fit;
-    const devW = Math.round(VIEW_W * devScale);
-    const devH = Math.round(VIEW_H * devScale);
+    // Integer scaling where it is at least 85% of the fit; otherwise fractional.
+    const scale = intScale >= 1 && intScale / fit >= 0.85 ? intScale : fit;
+    this.devScale = scale;
+    view.w = Math.ceil(devW / scale);
+    view.h = Math.ceil(devH / scale);
+    view.sceneY = Math.round(
+      view.h >= SCENE_H ? (view.h - SCENE_H) * HEADROOM : (view.h - SCENE_H) / 2,
+    );
+    if (this.buffer.width !== view.w || this.buffer.height !== view.h) {
+      this.buffer.width = view.w;
+      this.buffer.height = view.h;
+    }
+    this.ctx.imageSmoothingEnabled = false;
     this.canvas.width = devW;
     this.canvas.height = devH;
-    const cssW = devW / dpr;
-    const cssH = devH / dpr;
-    this.cssScale = cssW / VIEW_W;
-    this.cssLeft = (winW - cssW) / 2;
-    this.cssTop = (winH - cssH) / 2;
+    this.cssScale = scale / dpr;
     const s = this.canvas.style;
-    s.width = `${cssW}px`;
-    s.height = `${cssH}px`;
-    s.left = `${this.cssLeft}px`;
-    s.top = `${this.cssTop}px`;
+    s.width = `${winW}px`;
+    s.height = `${winH}px`;
     document.documentElement.style.setProperty('--px', `${this.cssScale}px`);
-    document.documentElement.style.setProperty('--game-w', `${cssW}px`);
-    document.documentElement.style.setProperty('--game-h', `${cssH}px`);
-    document.documentElement.style.setProperty('--game-left', `${this.cssLeft}px`);
-    document.documentElement.style.setProperty('--game-top', `${this.cssTop}px`);
     this.out.imageSmoothingEnabled = false;
   }
 
-  /** Convert a client (CSS) coordinate to game-view coordinates. */
+  /** Convert a client (CSS) coordinate to view coordinates. */
   toView(clientX: number, clientY: number): { x: number; y: number } {
-    return {
-      x: (clientX - this.cssLeft) / this.cssScale,
-      y: (clientY - this.cssTop) / this.cssScale,
-    };
+    return { x: clientX / this.cssScale, y: clientY / this.cssScale };
   }
 
   present(): void {
     this.out.imageSmoothingEnabled = false;
-    this.out.drawImage(this.buffer, 0, 0, this.canvas.width, this.canvas.height);
+    const s = this.devScale;
+    this.out.drawImage(this.buffer, 0, 0, view.w * s, view.h * s);
   }
 }

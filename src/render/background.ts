@@ -1,6 +1,6 @@
 import { createRng } from '../game/rng';
 import { LEVEL } from '../level/level';
-import { VIEW_W } from './Screen';
+import { MAX_VIEW_W, SCENE_H, view } from './Screen';
 import type { PersonSprites, SpriteBank } from './sprites';
 
 /** Screen y of the waiter's lane floor (feet). */
@@ -9,6 +9,9 @@ export const FLOOR_Y = 238;
 export const DEPTH_PX = 20;
 /** Where the back wall meets the floor. */
 export const WALL_Y = 178;
+/** Extra wall above the scene and floor below it, shown on tall (portrait) views. */
+const WALL_EXT = 280;
+const FLOOR_EXT = 420;
 
 export const FAR = 0.35;
 export const LIGHTS = 0.5;
@@ -41,7 +44,7 @@ export class Background {
     this.dance = this.buildFloor(true);
     // Fixed layout (independent of the round seed) so the hall always looks the same.
     const rng = createRng('banquet-hall');
-    const midLen = LEVEL.LENGTH * MID + VIEW_W;
+    const midLen = LEVEL.LENGTH * MID + MAX_VIEW_W;
     for (let x = 40; x < midLen; x += 118 + rng.int(-10, 10)) this.tables.push(x);
     for (const tx of this.tables) {
       const n = rng.int(1, 3);
@@ -65,11 +68,31 @@ export class Background {
   }
 
   private buildFar(): HTMLCanvasElement {
-    const w = Math.ceil(LEVEL.LENGTH * FAR + VIEW_W + 4);
+    const w = Math.ceil(LEVEL.LENGTH * FAR + MAX_VIEW_W + 4);
     const c = document.createElement('canvas');
     c.width = w;
-    c.height = WALL_Y;
+    c.height = WALL_EXT + WALL_Y;
     const ctx = c.getContext('2d')!;
+    // Upper wall above the scene, fading into the dark ceiling.
+    const up = ctx.createLinearGradient(0, 0, 0, WALL_EXT);
+    up.addColorStop(0, '#1a0f1f');
+    up.addColorStop(0.5, '#2a0f1e');
+    up.addColorStop(1, '#3a1428');
+    ctx.fillStyle = up;
+    ctx.fillRect(0, 0, w, WALL_EXT);
+    // Damask dots continue up to a ceiling cornice.
+    const cornice = WALL_EXT - 160;
+    ctx.fillStyle = 'rgba(255, 200, 150, 0.06)';
+    for (let y = WALL_EXT - 4; y > cornice + 4; y -= 12)
+      for (let x = 6; x < w; x += 12) ctx.fillRect(x, y, 2, 2);
+    ctx.fillStyle = '#6b3b25';
+    ctx.fillRect(0, cornice - 3, w, 3);
+    ctx.fillStyle = '#c99a4a';
+    ctx.fillRect(0, cornice, w, 2);
+    ctx.fillStyle = '#e8c070';
+    ctx.fillRect(0, cornice + 2, w, 1);
+    // The authored wall below, in scene coordinates.
+    ctx.translate(0, WALL_EXT);
     const g = ctx.createLinearGradient(0, 0, 0, WALL_Y);
     g.addColorStop(0, '#3a1428');
     g.addColorStop(0.55, '#7a2c3a');
@@ -155,7 +178,7 @@ export class Background {
 
   private buildFloor(dance: boolean): HTMLCanvasElement {
     const w = 96;
-    const h = 270 - WALL_Y;
+    const h = SCENE_H - WALL_Y + FLOOR_EXT;
     const c = document.createElement('canvas');
     c.width = w;
     c.height = h;
@@ -199,13 +222,13 @@ export class Background {
   }
 
   drawFar(ctx: CanvasRenderingContext2D, camX: number, time: number): void {
-    ctx.drawImage(this.far, -Math.round(camX * FAR), 0);
+    ctx.drawImage(this.far, -Math.round(camX * FAR), -WALL_EXT);
     // String lights (own parallax layer): catenary spans with twinkling bulbs.
     const lx = camX * LIGHTS;
     const span = 72;
     const first = Math.floor(lx / span) * span;
     const colors = ['#ffe9a8', '#ffd36b', '#ffb3c7', '#fff4d6'];
-    for (let s = first; s < lx + VIEW_W + span; s += span) {
+    for (let s = first; s < lx + view.w + span; s += span) {
       for (let i = 0; i <= span; i += 2) {
         const f = i / span;
         const y = 22 + Math.sin(f * Math.PI) * 16;
@@ -228,7 +251,7 @@ export class Background {
 
   drawFloor(ctx: CanvasRenderingContext2D, camX: number, time: number): void {
     const ox = -Math.round(camX) % 96;
-    for (let x = ox - 96; x < VIEW_W + 96; x += 96) {
+    for (let x = ox - 96; x < view.w + 96; x += 96) {
       const wx = x + Math.round(camX);
       const tile = wx + 96 > DANCE_X0 && wx < DANCE_X1 ? this.dance : this.floor;
       ctx.drawImage(tile, x, WALL_Y);
@@ -236,15 +259,15 @@ export class Background {
     // Pulsing dance floor lights.
     const x0 = DANCE_X0 - camX;
     const x1 = DANCE_X1 - camX;
-    if (x1 > 0 && x0 < VIEW_W) {
+    if (x1 > 0 && x0 < view.w) {
       const beat = (time * 2) % 1;
       ctx.globalAlpha = 0.14 * (1 - beat);
       ctx.fillStyle = ['#ff6fa8', '#6fd3ff', '#ffd36b'][Math.floor(time * 2) % 3];
       ctx.fillRect(
         Math.max(0, Math.round(x0)),
         WALL_Y,
-        Math.min(VIEW_W, Math.round(x1)) - Math.max(0, Math.round(x0)),
-        270 - WALL_Y,
+        Math.min(view.w, Math.round(x1)) - Math.max(0, Math.round(x0)),
+        SCENE_H - WALL_Y + FLOOR_EXT,
       );
       ctx.globalAlpha = 1;
     }
@@ -256,7 +279,7 @@ export class Background {
     // Guests standing behind the tables (upper bodies) first.
     for (const g of this.guests) {
       const x = Math.round(g.x - mx);
-      if (x < -20 || x > VIEW_W + 20) continue;
+      if (x < -20 || x > view.w + 20) continue;
       const bob = Math.sin(time * g.speed + g.phase) > 0.3 ? 1 : 0;
       const jump = gasping ? (Math.sin(time * 18 + g.phase) > 0 ? 2 : 0) : 0;
       const up = g.p.upper;
@@ -270,7 +293,7 @@ export class Background {
     }
     for (const tx of this.tables) {
       const x = Math.round(tx - mx);
-      if (x < -40 || x > VIEW_W + 40) continue;
+      if (x < -40 || x > view.w + 40) continue;
       // Round table: cloth top + skirt + centrepiece.
       ctx.fillStyle = '#e9dccb';
       ctx.fillRect(x - 26, tableY + 2, 52, 12);
@@ -302,7 +325,7 @@ export class Background {
     const mx = camX * MID;
     for (let i = 0; i < this.guests.length && n < out.length; i += 2) {
       const x = this.guests[i].x - mx;
-      if (x > 20 && x < VIEW_W - 20) out[n++] = x;
+      if (x > 20 && x < view.w - 20) out[n++] = x;
     }
     return n;
   }
