@@ -19,6 +19,9 @@ export class Countdown implements State {
 
   update(g: Game, dt: number): void {
     this.t += dt;
+    // Keep re-zeroing so play starts level however the phone is held, even if tilt data
+    // only began arriving after the round started (iOS permission prompt).
+    g.input.calibrateTilt();
     const i = Math.floor(this.t / STEP_TIME);
     if (i !== this.shown && i < STEPS.length) {
       this.shown = i;
