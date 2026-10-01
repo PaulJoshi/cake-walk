@@ -2,29 +2,19 @@
 
 > **60 seconds to save the wedding.** Hold to walk. Move to balance.
 
+<p align="center"><img src="docs/title-screen.png" alt="Cake Walk title screen: pixel-art wedding reception with the CAKE WALK logo and Play Daily / Free Play buttons" width="720"/></p>
+
 ```text
-   *      .      *         .       *       .      *
-        .    *       .        *        .     *
-
-                   .-=========-.
-                   \'-=======-'/
-                   _|   .=.   |_
-                  ((|  {{1}}  |))
-                   \|   /|\   |/
-                    \__ '`' __/
-                      _`) (`_
-                    _/_______\_
-                   /___________\
-
-                .-----------------.
-                |    * WINNER *   |
-          .-----'-----------------'-----.
-          |    TINKERHUB   KOCHI        |
-          |   DEVIN EVENT - 1ST PRIZE   |
-     .----'-----------------------------'----.
-     |  7 TIERS . 60 SECONDS . 0 DROPPED     |
-     '---------------------------------------'
-    (_______________________________________)
+     ___________
+    '._==_==_=_.'     .------------------------------------.
+    .-\:      /-.     |                                    |
+   | (|:. 1st |) |    |          * W I N N E R *           |
+    '-|:.     |-'     |                                    |
+      \::.    /       |          TINKERHUB  KOCHI          |
+       '::. .'        |      DEVIN EVENT - 1ST PRIZE       |
+         ) (          |                                    |
+       _.' '._        |  7 TIERS . 60 SECONDS . 0 DROPPED  |
+      '-------'       '------------------------------------'
 ```
 
 <p align="center"><b>🏆 1st prize winner at the <a href="http://luma.com/fivtwyix">TinkerHub x Devin event in Kochi</a> 🏆</b><br/>
