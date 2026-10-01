@@ -105,10 +105,24 @@ export const T = {
   // ---------------------------------------------------------------- obstacles
   /** Seconds of warning shown before an obstacle matters. */
   ALERT_LEAD: 1.0,
+  // Per-seed variation: each obstacle's position shifts by up to +/- this (px) from its
+  // zone's base x in level.ts, so every seed lays the hall out a little differently.
+  SPILL_SHIFT: 40,
+  SPILL_WIDTH_MIN: 60,
+  SPILL_WIDTH_MAX: 110,
+  UNCLE_SHIFT: 50,
+  ROOMBA_SHIFT: 50,
+  TODDLER_SHIFT: 45,
+  GRANDMA_SHIFT: 50,
+  CONGA_SHIFT: 40,
+  /** Seeded shift of the bass drop moment (+/- s around LEVEL.BASS_DROP_AT). */
+  BASS_DROP_SHIFT: 3,
   // Dancing Uncle: hip bumps into the lane on a rhythm.
-  UNCLE_PERIOD: 1.25,
+  /** Seeded tempo: seconds between hip bumps. */
+  UNCLE_PERIOD_MIN: 1.05,
+  UNCLE_PERIOD_MAX: 1.45,
   /** Per-beat seeded timing jitter (+/- s). */
-  UNCLE_JITTER: 0.1,
+  UNCLE_JITTER: 0.15,
   /** How long the hips stay in the lane per beat (s). */
   UNCLE_OUT_TIME: 0.36,
   /** Wind-up animation before each bump (s). */
@@ -143,9 +157,10 @@ export const T = {
   TODDLER_OMEGA: 1.35,
   TODDLER_SLIDE: 70,
   // Grandma with a walker: slow blocker in the lane.
-  GRANDMA_SPEED: 14,
-  GRANDMA_TIME_MIN: 3.2,
-  GRANDMA_TIME_MAX: 4.4,
+  GRANDMA_SPEED_MIN: 10,
+  GRANDMA_SPEED_MAX: 18,
+  GRANDMA_TIME_MIN: 2.6,
+  GRANDMA_TIME_MAX: 4.8,
   GRANDMA_HALF_W: 10,
   /** Seconds to step into / out of the lane. */
   GRANDMA_STEP_TIME: 0.8,
@@ -158,12 +173,14 @@ export const T = {
   /** Extra mass on the top tier (bottom tier = 1). */
   BOUQUET_MASS: 0.3,
   /** Seeded landing offset range (+/- px from the top tier centre). */
-  BOUQUET_OFFSET_MAX: 4,
+  BOUQUET_OFFSET_MAX: 7,
   BOUQUET_OMEGA_PER_PX: 0.06,
   BOUQUET_SLIDE_PER_PX: 5,
   // Conga line: dancers cross the lane in sequence.
   CONGA_COUNT: 6,
-  CONGA_SPACING: 0.42,
+  /** Seeded gap between dancers (s). */
+  CONGA_SPACING_MIN: 0.34,
+  CONGA_SPACING_MAX: 0.5,
   CONGA_DEPTH_SPEED: 1.6,
   CONGA_DELAY_MIN: 0.3,
   CONGA_DELAY_MAX: 0.8,

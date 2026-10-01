@@ -10,6 +10,8 @@ export class Conga implements Obstacle {
   readonly kind = 'conga';
   readonly x: number;
   readonly delay: number;
+  /** Seeded gap between dancers (s). */
+  readonly spacing: number;
   /** Sim time the leader starts moving (Infinity until triggered). */
   start = Infinity;
   alert = 0;
@@ -18,15 +20,16 @@ export class Conga implements Obstacle {
   readonly bumped: boolean[] = [];
 
   constructor(rng: Rng) {
-    this.x = LEVEL.CONGA.cross + rng.range(-12, 12);
+    this.x = LEVEL.CONGA.cross + rng.range(-T.CONGA_SHIFT, T.CONGA_SHIFT);
     this.alertX = this.x;
     this.delay = rng.range(T.CONGA_DELAY_MIN, T.CONGA_DELAY_MAX);
+    this.spacing = rng.range(T.CONGA_SPACING_MIN, T.CONGA_SPACING_MAX);
     for (let i = 0; i < T.CONGA_COUNT; i++) this.bumped.push(false);
   }
 
   /** Depth of dancer i at `time` (starts at the back, walks towards the camera). */
   depthOf(i: number, time: number): number {
-    const t0 = this.start + i * T.CONGA_SPACING;
+    const t0 = this.start + i * this.spacing;
     return 1.4 - Math.max(0, time - t0) * T.CONGA_DEPTH_SPEED;
   }
 

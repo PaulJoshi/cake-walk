@@ -11,7 +11,7 @@ test('loads, starts, walks for 3 s with no console errors and the timer decreasi
 
   await page.goto('/');
   await expect(page.locator('#game')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Play Daily' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Daily Challenge' })).toBeVisible();
 
   const timeLeft = () =>
     page.evaluate(
@@ -24,7 +24,7 @@ test('loads, starts, walks for 3 s with no console errors and the timer decreasi
       () => (window as unknown as { cakeWalk: { stateName: string } }).cakeWalk.stateName,
     );
 
-  await page.getByRole('button', { name: 'Play Daily' }).click();
+  await page.getByRole('button', { name: 'Daily Challenge' }).click();
   await expect.poll(state, { timeout: 8000 }).toBe('playing');
   const before = await timeLeft();
 

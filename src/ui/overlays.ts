@@ -209,8 +209,8 @@ export class Overlays {
         <h1 class="cw-logo" aria-label="Cake Walk"><span>CAKE</span><span>WALK</span></h1>
         <p class="cw-sub">60 seconds to save the wedding</p>
         <div class="cw-buttons">
-          <button data-action="daily" data-primary>Play Daily</button>
-          <button data-action="free">Free Play</button>
+          <button data-action="daily" data-primary>Daily Challenge</button>
+          <button data-action="free">Random</button>
         </div>
         <div class="cw-buttons small">
           <button data-action="controls">Controls</button>
@@ -218,7 +218,7 @@ export class Overlays {
           <button data-action="fullscreen">Fullscreen</button>
           ${this.tiltButton()}
         </div>
-        <p class="cw-best">Daily best ${this.bestLine('daily')} &nbsp; Free best ${this.bestLine('free')}</p>
+        <p class="cw-best">Daily best ${this.bestLine('daily')} &nbsp; Random best ${this.bestLine('free')}</p>
         <p class="cw-hint">${touch ? 'Tap anywhere to start' : 'Press any key to start'}</p>
       </div>`,
     );
@@ -308,11 +308,11 @@ export class Overlays {
     const won = r.outcome === 'won';
     const fail = !won ? FAIL_LINES[r.outcome as keyof typeof FAIL_LINES] : null;
     const best = loadBest(r.mode);
-    const other = g.mode === 'daily' ? 'Free Play' : 'Daily';
+    const other = g.mode === 'daily' ? 'Random' : 'Daily Challenge';
     this.open(
       'result',
       `<div class="cw-card cw-result ${won ? 'win' : 'lose'}">
-        <div class="cw-mode">${r.mode === 'daily' ? `Daily ${esc(r.seed)}` : `Free Play #${esc(r.seed)}`}</div>
+        <div class="cw-mode">${r.mode === 'daily' ? `Daily Challenge ${esc(r.seed)}` : `Random #${esc(r.seed)}`}</div>
         <div class="cw-grade g-${gr}" aria-label="Grade ${gr}">${gr}</div>
         <h2>${won ? 'CAKE DELIVERED!' : esc(fail!.title)}</h2>
         <p class="cw-joke">${esc(won ? WIN_LINES[gr as keyof typeof WIN_LINES] : fail!.joke)}</p>

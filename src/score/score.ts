@@ -59,9 +59,9 @@ const LOSS_WORD: Record<string, string> = {
   timeout: 'out of time',
 };
 
-/** e.g. "🎂 CAKE WALK — Daily 2026-09-30 — Grade S — 7/7 tiers — 17.3s left — 3 clutch saves" */
+/** e.g. "🎂 CAKE WALK — Daily Challenge 2026-09-30 — Grade S — 7/7 tiers — 17.3s left — 3 clutch saves" */
 export function shareText(r: RoundResult): string {
-  const mode = r.mode === 'daily' ? `Daily ${r.seed}` : `Free Play #${r.seed}`;
+  const mode = r.mode === 'daily' ? `Daily Challenge ${r.seed}` : `Random #${r.seed}`;
   const g = grade(r);
   const parts = [`🎂 CAKE WALK`, mode, `Grade ${g}`];
   if (r.outcome === 'won') {

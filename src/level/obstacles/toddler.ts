@@ -11,6 +11,8 @@ type ToddlerState = 'hidden' | 'peek' | 'run' | 'gone';
 export class Toddler implements Obstacle {
   readonly kind = 'toddler';
   readonly x: number;
+  /** Waiter x that makes the toddler peek out. */
+  readonly trigger: number;
   readonly minDelay: number;
   state: ToddlerState = 'hidden';
   depth = 1.3;
@@ -22,7 +24,9 @@ export class Toddler implements Obstacle {
   private hitDone = false;
 
   constructor(rng: Rng) {
-    this.x = LEVEL.TODDLER.cross + rng.range(-12, 12);
+    const shift = rng.range(-T.TODDLER_SHIFT, T.TODDLER_SHIFT);
+    this.x = LEVEL.TODDLER.cross + shift;
+    this.trigger = LEVEL.TODDLER.trigger + shift;
     this.alertX = this.x;
     this.minDelay = rng.range(T.TODDLER_DELAY_MIN, T.TODDLER_DELAY_MAX);
   }
@@ -50,7 +54,7 @@ export class Toddler implements Obstacle {
     const wx = w.waiter.x;
     switch (this.state) {
       case 'hidden':
-        if (wx > LEVEL.TODDLER.trigger && wx < this.x) this.set('peek');
+        if (wx > this.trigger && wx < this.x) this.set('peek');
         break;
       case 'peek': {
         const dist = this.x - T.TODDLER_HALF_W - w.t.WAITER_HALF_W - wx;

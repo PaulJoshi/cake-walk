@@ -3,7 +3,7 @@ import { World } from '../src/game/World';
 import { T, DEG } from '../src/game/tuning';
 import { LEVEL } from '../src/level/level';
 import { Autopilot } from '../src/bot/autopilot';
-import { Bouquet, Grandma, Toddler, Uncle } from '../src/level/obstacles';
+import { BassDrop, Bouquet, Grandma, Toddler, Uncle } from '../src/level/obstacles';
 
 const DT = 1 / T.SIM_HZ;
 const idle = { walk: false, trayTarget: 0 };
@@ -71,20 +71,24 @@ describe('world outcomes', () => {
     const uc = c.obstacles.find((o) => o instanceof Uncle) as Uncle;
     expect(ua.beats).toEqual(ub.beats);
     expect(ua.beats).not.toEqual(uc.beats);
+    expect(ua.x).toBe(ub.x);
+    expect(ua.x).not.toBe(uc.x);
     const ta = a.obstacles.find((o) => o instanceof Toddler) as Toddler;
     const tb = b.obstacles.find((o) => o instanceof Toddler) as Toddler;
     expect(ta.minDelay).toBe(tb.minDelay);
   });
 
-  it('bass drop fires at 20 seconds remaining', () => {
+  it('bass drop fires at its seeded time, around 20 seconds remaining', () => {
     const w = new World('bass');
+    const b = w.obstacles.find((o) => o instanceof BassDrop) as BassDrop;
+    expect(Math.abs(b.dropAt - LEVEL.BASS_DROP_AT)).toBeLessThanOrEqual(T.BASS_DROP_SHIFT);
     let dropAt = -1;
     for (let i = 0; i < 50 * T.SIM_HZ && !w.finished; i++) {
       w.step(idle, DT);
       if (w.events.some((e) => e.type === 'bassDrop')) dropAt = w.timeLeft;
       w.events.length = 0;
     }
-    expect(dropAt).toBeCloseTo(LEVEL.BASS_DROP_AT, 1);
+    expect(dropAt).toBeCloseTo(b.dropAt, 1);
   });
 
   it('the bouquet lands on the cake and raises its centre of mass', () => {
@@ -102,8 +106,8 @@ describe('world outcomes', () => {
 
   it('grandma blocks the lane while she is in it', () => {
     const w = new World('granny');
-    w.skipTo(LEVEL.GRANDMA.trigger + 5);
     const g = w.obstacles.find((o) => o instanceof Grandma) as Grandma;
+    w.skipTo(g.trigger + 5);
     run(w, () => ({ walk: true, trayTarget: 0 }), 1.5);
     expect(g.active).toBe(true);
     expect(w.waiter.x).toBeLessThan(g.x);

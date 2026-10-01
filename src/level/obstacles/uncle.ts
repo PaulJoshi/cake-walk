@@ -8,19 +8,24 @@ import { easeAlert } from './util';
 /** Dancing Uncle: hip-bumps into the lane on a (seeded, jittery) rhythm. */
 export class Uncle implements Obstacle {
   readonly kind = 'uncle';
-  readonly x = LEVEL.UNCLE_X;
+  readonly x: number;
+  /** Seeded tempo (s between bumps). */
+  readonly period: number;
   alert = 0;
-  alertX = LEVEL.UNCLE_X;
+  alertX: number;
   alertY = 0;
   /** Start time of each hip bump (sim seconds). */
   readonly beats: number[] = [];
   private lastHitBeat = -1;
 
   constructor(rng: Rng) {
-    let tb = rng.range(0.2, T.UNCLE_PERIOD);
+    this.x = LEVEL.UNCLE_X + rng.range(-T.UNCLE_SHIFT, T.UNCLE_SHIFT);
+    this.alertX = this.x;
+    this.period = rng.range(T.UNCLE_PERIOD_MIN, T.UNCLE_PERIOD_MAX);
+    let tb = rng.range(0.2, this.period);
     while (tb < T.ROUND_TIME + 5) {
       this.beats.push(tb);
-      tb += T.UNCLE_PERIOD + rng.range(-T.UNCLE_JITTER, T.UNCLE_JITTER);
+      tb += this.period + rng.range(-T.UNCLE_JITTER, T.UNCLE_JITTER);
     }
   }
 

@@ -1,4 +1,6 @@
 import type { World } from '../../game/World';
+import type { Rng } from '../../game/rng';
+import { T } from '../../game/tuning';
 import { LEVEL } from '../level';
 import type { Obstacle } from './types';
 import { easeAlert } from './util';
@@ -6,12 +8,20 @@ import { easeAlert } from './util';
 /** Champagne spill: stopping is slippery and moving on it causes random slips. */
 export class Spill implements Obstacle {
   readonly kind = 'spill';
-  readonly x0 = LEVEL.SPILL.x0;
-  readonly x1 = LEVEL.SPILL.x1;
+  readonly x0: number;
+  readonly x1: number;
   alert = 0;
-  alertX = (LEVEL.SPILL.x0 + LEVEL.SPILL.x1) / 2;
+  alertX: number;
   alertY = 0;
   private slipTimer = 0;
+
+  constructor(rng: Rng) {
+    const mid = (LEVEL.SPILL.x0 + LEVEL.SPILL.x1) / 2 + rng.range(-T.SPILL_SHIFT, T.SPILL_SHIFT);
+    const half = rng.range(T.SPILL_WIDTH_MIN, T.SPILL_WIDTH_MAX) / 2;
+    this.x0 = mid - half;
+    this.x1 = mid + half;
+    this.alertX = mid;
+  }
 
   isOn(x: number): boolean {
     return x >= this.x0 && x <= this.x1;

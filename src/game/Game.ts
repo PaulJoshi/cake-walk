@@ -28,7 +28,7 @@ export class Game {
   world: World;
   mode: Mode = 'daily';
   seed: string;
-  /** Seed forced by ?seed= (overrides Daily/Free). */
+  /** Seed forced by ?seed= (overrides Daily Challenge/Random). */
   readonly urlSeed: string | null;
   readonly debug: boolean;
   /** ?bot=1: the autopilot plays the real round (demos, visual checks). */

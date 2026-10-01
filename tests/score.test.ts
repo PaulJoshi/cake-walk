@@ -55,15 +55,15 @@ describe('score', () => {
 describe('share text', () => {
   it('matches the spec example', () => {
     expect(shareText(base)).toBe(
-      '🎂 CAKE WALK — Daily 2026-09-30 — Grade S — 7/7 tiers — 17.3s left — 3 clutch saves',
+      '🎂 CAKE WALK — Daily Challenge 2026-09-30 — Grade S — 7/7 tiers — 17.3s left — 3 clutch saves',
     );
   });
-  it('singular clutch, no clutch, free play and losses', () => {
+  it('singular clutch, no clutch, random and losses', () => {
     expect(shareText(r({ clutches: 1 }))).toMatch(/— 1 clutch save$/);
     expect(shareText(r({ clutches: 0 }))).toMatch(/17\.3s left$/);
-    expect(shareText(r({ mode: 'free', seed: 'ABC' }))).toContain('Free Play #ABC');
+    expect(shareText(r({ mode: 'free', seed: 'ABC' }))).toContain('Random #ABC');
     expect(shareText(r({ outcome: 'toppled', clutches: 0 }))).toBe(
-      '🎂 CAKE WALK — Daily 2026-09-30 — Grade F — cake toppled',
+      '🎂 CAKE WALK — Daily Challenge 2026-09-30 — Grade F — cake toppled',
     );
   });
 });
