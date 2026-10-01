@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createRng, hashString, mulberry32, todaySeed } from '../src/game/rng';
+import { createRng, hashString, mulberry32, randomSeed, todaySeed } from '../src/game/rng';
 
 describe('rng', () => {
   it('mulberry32 is deterministic for the same seed', () => {
@@ -35,5 +35,10 @@ describe('rng', () => {
 
   it('formats today seed as YYYY-MM-DD', () => {
     expect(todaySeed(new Date(2026, 8, 30))).toBe('2026-09-30');
+  });
+
+  it('random seeds do not repeat between rounds', () => {
+    const seeds = new Set(Array.from({ length: 1000 }, () => randomSeed()));
+    expect(seeds.size).toBe(1000);
   });
 });

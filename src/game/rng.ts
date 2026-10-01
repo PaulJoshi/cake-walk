@@ -49,7 +49,7 @@ export function todaySeed(d: Date = new Date()): string {
   return `${y}-${m}-${day}`;
 }
 
-/** A short random seed string for Free Play. */
+/** A short random seed string for Random mode. */
 export function randomSeed(): string {
   return Math.floor(Math.random() * 0xffffffff)
     .toString(36)
