@@ -1,14 +1,16 @@
 import type { Game } from '../game/Game';
 import { T } from '../game/tuning';
 import { WORLDS, WORLD_IDS, isWorldId, type WorldId } from '../level/worlds';
+import type { Board, BoardEntry, Ranks } from '../score/board';
+import { isoWeek } from '../score/formula';
+import { NAME_MAX } from '../score/names';
 import {
   WIN_LINES,
+  breakdown,
   failLine,
+  fmtScore,
   grade,
-  loadBest,
-  score,
   shareText,
-  type Mode,
   type RoundResult,
 } from '../score/score';
 
@@ -26,7 +28,12 @@ type Action =
   | 'mute'
   | 'fullscreen'
   | 'tilt'
-  | 'world';
+  | 'world'
+  | 'scores'
+  | 'boardWorld'
+  | 'boardWeek'
+  | 'boardAll'
+  | 'editName';
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
@@ -54,6 +61,22 @@ const WORLD_ICONS: Record<WorldId, string> = {
     '<rect x="12" y="6" width="2" height="1" fill="#2e7fd6"/><rect x="13" y="7" width="2" height="4" fill="#2e7fd6"/><rect x="12" y="11" width="2" height="1" fill="#2e7fd6"/><rect x="9" y="7" width="2" height="1" fill="#e6f8ff"/>' +
     '<rect x="4" y="10" width="14" height="1" fill="#ffd36b"/><rect x="3" y="11" width="3" height="1" fill="#ffd36b"/>' +
     '<rect x="2" y="4" width="3" height="1" fill="#6be38a"/><rect x="1" y="5" width="5" height="1" fill="#c9ced8"/><rect x="2" y="6" width="1" height="1" fill="#ffd36b"/><rect x="4" y="6" width="1" height="1" fill="#ffd36b"/>',
+};
+
+/** A tiny pixel trophy for the scoreboard link. */
+const TROPHY =
+  '<svg class="cw-trophy" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true"><g fill="currentColor">' +
+  '<rect x="1" y="0" width="6" height="3"/><rect x="0" y="1" width="1" height="1"/><rect x="7" y="1" width="1" height="1"/>' +
+  '<rect x="2" y="3" width="4" height="1"/><rect x="3" y="4" width="2" height="2"/><rect x="2" y="6" width="4" height="2"/></g></svg>';
+
+const PART_LABELS: Record<string, string> = {
+  distance: 'Distance',
+  cargo: 'Cargo',
+  delivery: 'Delivery',
+  pace: 'Pace',
+  poise: 'Poise',
+  clutch: 'Clutch',
+  bumps: 'Bumps',
 };
 
 function worldIcon(id: WorldId): string {
@@ -85,6 +108,14 @@ export class Overlays {
   /** The world button that was just pressed. */
   private pickedWorld = '';
   private snapshot: HTMLCanvasElement | null = null;
+  /** The snapshot as a PNG, made ahead so Share responds straight away. */
+  private snapshotPng: Blob | null = null;
+  /** Scoreboard screen: which world and which board. */
+  private boardWorld: WorldId = 'wedding';
+  private boardTab: 'week' | 'all' = 'week';
+  private boardFailed = false;
+  /** The scoreboard footer is showing the name field. */
+  private editingName = false;
 
   constructor(root: HTMLElement) {
     root.innerHTML = `
@@ -119,6 +150,12 @@ export class Overlays {
         void this.askTilt().then(() => this.act(act));
       } else this.act(a);
     });
+    root.addEventListener('submit', (e) => {
+      const form = (e.target as HTMLElement).closest<HTMLFormElement>('form[data-form="name"]');
+      if (!form) return;
+      e.preventDefault();
+      this.saveName(form);
+    });
     // Any touch on the title background starts too. The iOS permission prompt only works
     // from a click, so that first tap is left to the click handler.
     this.panel.addEventListener('pointerdown', (e) => {
@@ -134,6 +171,10 @@ export class Overlays {
 
   bind(game: Game): void {
     this.game = game;
+    // The profile loads from IndexedDB a moment after start: fill in the best when it lands.
+    game.profile.onChange(() => {
+      if (this.screen === 'title') this.refreshTitleScores();
+    });
   }
 
   get screen(): string {
@@ -184,6 +225,26 @@ export class Overlays {
         break;
       case 'share':
         void this.share();
+        break;
+      case 'scores':
+        this.boardWorld = g.worldId;
+        this.editingName = false;
+        this.showScores();
+        break;
+      case 'boardWorld':
+        if (isWorldId(this.pickedWorld)) {
+          this.boardWorld = this.pickedWorld;
+          this.showScores();
+        }
+        break;
+      case 'boardWeek':
+      case 'boardAll':
+        this.boardTab = a === 'boardWeek' ? 'week' : 'all';
+        this.showScores();
+        break;
+      case 'editName':
+        this.editingName = true;
+        this.fillBoardFoot();
         break;
     }
   }
@@ -244,9 +305,41 @@ export class Overlays {
     this.corner.classList.remove('no-pause');
   }
 
-  private bestLine(mode: Mode): string {
-    const b = loadBest(mode, undefined, this.game?.worldId);
-    return b ? `${b.grade} · ${b.score}` : '—';
+  private bestText(world: WorldId): string {
+    const b = this.game?.profile.best(world);
+    return b ? fmtScore(b.score) : '—';
+  }
+
+  /** The scoreboard link's label: the world's top score once it is known. */
+  private topText(world: WorldId): string {
+    const top = this.game?.scoreboard.cached(world)?.all[0];
+    return top ? `Top ${fmtScore(top.score)}` : 'Scoreboard';
+  }
+
+  /** Personal best plus a quiet link to the scoreboard (hidden when there isn't one). */
+  private bestLine(): string {
+    const world = this.game?.worldId ?? 'wedding';
+    const hide = this.game?.scoreboard.available === false ? ' hidden' : '';
+    return `<div class="cw-best">
+      <span>Best <b class="cw-pb">${this.bestText(world)}</b></span>
+      <button class="cw-link cw-toplink" data-action="scores" title="Scoreboard"${hide}>${TROPHY}<span class="cw-top">${this.topText(world)}</span></button>
+    </div>`;
+  }
+
+  /** Update the title's best and top score in place (no re-render, focus stays put). */
+  private refreshTitleScores(): void {
+    const g = this.game;
+    if (!g) return;
+    const world = g.worldId;
+    const pb = this.panel.querySelector('.cw-pb');
+    if (pb) pb.textContent = this.bestText(world);
+    void g.scoreboard.load(world).then(() => {
+      if (this.screen !== 'title' || g.worldId !== world) return;
+      const link = this.panel.querySelector<HTMLElement>('.cw-toplink');
+      const top = this.panel.querySelector('.cw-top');
+      if (link) link.hidden = g.scoreboard.available === false;
+      if (top) top.textContent = this.topText(world);
+    });
   }
 
   /** One square picture button per world; the picked one is lifted and framed in gold. */
@@ -281,12 +374,138 @@ export class Overlays {
           ${this.tiltButton()}
         </div>
         ${this.worldPicker()}
-        <p class="cw-best">Daily best ${this.bestLine('daily')} &nbsp; Random best ${this.bestLine('free')}</p>
+        ${this.bestLine()}
         <p class="cw-hint">${touch ? 'Tap anywhere to start' : 'Press any key to start · ← → change world'}</p>
       </div>
       ${GITHUB_LINK}`,
       focusWorld ? '.cw-world.on' : undefined,
     );
+    this.refreshTitleScores();
+  }
+
+  /** Inline name field (scoreboard footer and the Controls card). */
+  private nameForm(): string {
+    const name = esc(this.game?.profile.name ?? '');
+    return `<form class="cw-name" data-form="name">
+      <input name="name" value="${name}" maxlength="${NAME_MAX}" aria-label="Your name" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done">
+      <button type="submit">Save</button>
+    </form>`;
+  }
+
+  private saveName(form: HTMLFormElement): void {
+    const g = this.game;
+    const input = form.elements.namedItem('name') as HTMLInputElement | null;
+    if (!g || !input) return;
+    const n = g.profile.setName(input.value);
+    if (!n) {
+      this.flash('Use at least 2 letters or digits');
+      return;
+    }
+    input.value = n;
+    input.blur();
+    this.flash(`Saved! You're ${n}`);
+    void g.scoreboard
+      .syncName()
+      .then(() => g.scoreboard.load(this.boardWorld, true))
+      .then(() => {
+        if (this.screen === 'scores') this.fillBoard();
+      });
+    if (this.screen === 'scores') {
+      this.editingName = false;
+      this.fillBoardFoot();
+      this.panel.querySelector<HTMLElement>('[data-action="editName"]')?.focus();
+    }
+  }
+
+  private rows(list: BoardEntry[], mine: number | null): string {
+    const tag = this.game?.scoreboard.myTag;
+    const items = list.map(
+      (e, i) =>
+        `<li${e.tag === tag ? ' class="me"' : ''}><span class="cw-r">${i + 1}</span><span class="cw-n">${esc(e.name)}</span><span class="cw-s">${fmtScore(e.score)}</span></li>`,
+    );
+    if (mine !== null && !list.some((e) => e.tag === tag)) {
+      items.push(
+        `<li class="me off"><span class="cw-r">-</span><span class="cw-n">You</span><span class="cw-s">${fmtScore(mine)}</span></li>`,
+      );
+    }
+    return `<ol class="cw-ranks">${items.join('')}</ol>`;
+  }
+
+  /** Top 10 for a world, this week or all time, with the player's own row highlighted. */
+  showScores(): void {
+    const g = this.game;
+    if (!g) return;
+    const world = this.boardWorld;
+    const week = this.boardTab === 'week';
+    const worlds = WORLD_IDS.map((id) => {
+      const on = id === world;
+      const name = WORLDS[id].name;
+      return `<button class="cw-world${on ? ' on' : ''}" data-action="boardWorld" data-world="${id}" role="radio" aria-checked="${on}" aria-label="${name}" title="${name}">${worldIcon(id)}</button>`;
+    }).join('');
+    const active = document.activeElement as HTMLElement | null;
+    const keep = active?.dataset?.action
+      ? `[data-action="${active.dataset.action}"]${active.dataset.world ? `[data-world="${active.dataset.world}"]` : ''}`
+      : undefined;
+    this.open(
+      'scores',
+      `<div class="cw-card cw-board">
+        <h2>SCOREBOARD</h2>
+        <div class="cw-worlds small" role="radiogroup" aria-label="World">${worlds}</div>
+        <div class="cw-mode">${WORLDS[world].name}</div>
+        <div class="cw-tabs" role="tablist">
+          <button class="cw-tab" role="tab" data-action="boardWeek" aria-selected="${week}">This week</button>
+          <button class="cw-tab" role="tab" data-action="boardAll" aria-selected="${!week}">All time</button>
+        </div>
+        <div class="cw-board-body" aria-live="polite"></div>
+        <div class="cw-board-foot"></div>
+        <div class="cw-buttons"><button data-action="back" data-primary>Back</button></div>
+      </div>`,
+      this.editingName ? undefined : keep,
+    );
+    this.fillBoard();
+    this.fillBoardFoot();
+    const cached = g.scoreboard.cached(world);
+    void g.scoreboard.load(world).then((b) => {
+      if (this.screen !== 'scores' || this.boardWorld !== world) return;
+      this.boardFailed = !b;
+      if (b !== cached) this.fillBoard();
+    });
+  }
+
+  private fillBoard(): void {
+    const g = this.game;
+    const el = this.panel.querySelector('.cw-board-body');
+    if (!g || !el) return;
+    const world = this.boardWorld;
+    const week = this.boardTab === 'week';
+    const p = g.profile.data;
+    const wb = p.weekBests[world];
+    const mine = week
+      ? wb && wb.week === isoWeek()
+        ? wb.score
+        : null
+      : (p.bests[world]?.score ?? null);
+    const board: Board | null = g.scoreboard.cached(world);
+    const list = board ? (week ? board.week : board.all) : null;
+    el.innerHTML = list
+      ? list.length
+        ? this.rows(list, mine)
+        : `<p class="cw-empty">No scores yet${week ? ' this week' : ''}. Be the first!</p>`
+      : `<p class="cw-empty">${this.boardFailed ? 'The scoreboard is offline right now.' : 'Loading...'}</p>`;
+  }
+
+  private fillBoardFoot(): void {
+    const g = this.game;
+    const el = this.panel.querySelector('.cw-board-foot');
+    if (!g || !el) return;
+    el.innerHTML = this.editingName
+      ? this.nameForm()
+      : `<p class="cw-small">Playing as <b>${esc(g.profile.name)}</b> <button class="cw-link" data-action="editName">Change</button></p>`;
+    if (this.editingName) {
+      const input = el.querySelector<HTMLInputElement>('input');
+      input?.focus({ preventScroll: true });
+      input?.select();
+    }
   }
 
   private showControls(): void {
@@ -300,6 +519,7 @@ export class Overlays {
           <tr><th>Other</th><td>R retry · P / Esc pause · M mute · F fullscreen</td></tr>
         </table>
         <p class="cw-small">Speeding up tips the cake back. Stopping tips it forward.<br>Slide the tray under the lean. Stop at the cake table and hold still.</p>
+        <div class="cw-namebox"><span>Your name</span>${this.nameForm()}</div>
         <div class="cw-buttons"><button data-action="back" data-primary>Back</button></div>
       </div>`,
     );
@@ -370,27 +590,44 @@ export class Overlays {
   showResult(g: Game, r: RoundResult, isNewBest: boolean, snapshot: HTMLCanvasElement): void {
     this.result = r;
     this.snapshot = snapshot;
+    this.snapshotPng = null;
+    snapshot.toBlob((b) => {
+      if (this.snapshot === snapshot) this.snapshotPng = b;
+    }, 'image/png');
     const gr = grade(r);
     const won = r.outcome === 'won';
     const fail = !won ? failLine(r) : null;
-    const best = loadBest(r.mode, undefined, r.world);
+    const best = g.profile.best(r.world ?? 'wedding');
     const other = g.mode === 'daily' ? 'Random' : 'Daily Challenge';
     const where = r.world && r.world !== 'wedding' ? `${WORLDS[r.world].name} · ` : '';
+    const parts = breakdown(r);
+    const partLine = Object.entries(PART_LABELS)
+      .filter(([k]) => parts[k as keyof typeof parts] !== 0)
+      .map(([k, label]) => {
+        const v = parts[k as keyof typeof parts];
+        return `<span>${label} ${v < 0 ? '−' : ''}${fmtScore(Math.abs(v))}</span>`;
+      })
+      .join('');
     this.open(
       'result',
       `<div class="cw-card cw-result ${won ? 'win' : 'lose'}">
         <div class="cw-mode">${where}${r.mode === 'daily' ? `Daily Challenge ${esc(r.seed)}` : `Random #${esc(r.seed)}`}</div>
-        <div class="cw-grade g-${gr}" aria-label="Grade ${gr}">${gr}</div>
+        <div class="cw-headline">
+          <div class="cw-grade g-${gr}" aria-label="Grade ${gr}">${gr}</div>
+          <div class="cw-score"><span class="cw-score-n">${fmtScore(parts.total)}</span><span class="cw-score-l">points</span></div>
+        </div>
         <h2>${won ? 'CAKE DELIVERED!' : esc(fail!.title)}</h2>
         <p class="cw-joke">${esc(won ? WIN_LINES[gr as keyof typeof WIN_LINES] : fail!.joke)}</p>
         ${isNewBest ? '<div class="cw-newbest">NEW BEST!</div>' : ''}
         ${cakes(won ? r.tiers : Math.min(r.tiers, T.TIER_COUNT))}
         <dl class="cw-stats">
-          <div><dt>Score</dt><dd>${score(r)}</dd></div>
+          <div><dt>Best</dt><dd>${best ? fmtScore(best.score) : '—'}</dd></div>
+          <div><dt>Way</dt><dd>${Math.floor(r.progress * 100)}%</dd></div>
           <div><dt>Time left</dt><dd>${r.secondsLeft.toFixed(1)}s</dd></div>
           <div><dt>Clutch</dt><dd>${r.clutches}</dd></div>
-          <div><dt>Best</dt><dd>${best ? `${best.grade} · ${best.score}` : '—'}</dd></div>
         </dl>
+        <p class="cw-parts" aria-label="Score breakdown">${partLine}</p>
+        <p class="cw-rank" aria-live="polite"></p>
         <div class="cw-buttons">
           <button data-action="retry" data-primary>Retry (R)</button>
           <button data-action="share">Share</button>
@@ -401,21 +638,57 @@ export class Overlays {
     );
   }
 
+  /** Scoreboard placings for the round just shown (arrive a moment after the result). */
+  showRanks(r: Ranks): void {
+    const el = this.panel.querySelector('.cw-rank');
+    if (!el) return;
+    const bits = [];
+    if (r.weekRank) bits.push(`#${r.weekRank} this week`);
+    if (r.allRank) bits.push(`#${r.allRank} all time`);
+    el.innerHTML = bits.length ? `${TROPHY}${bits.join(' · ')}` : '';
+  }
+
   private async share(): Promise<void> {
     const r = this.result;
     if (!r) return;
     const url = location.origin + location.pathname;
     const text = shareText(r);
+    const full = `${text}\n${url}`;
     const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
-    try {
-      const blob = this.snapshot
+    const blob =
+      this.snapshotPng ??
+      (this.snapshot
         ? await new Promise<Blob | null>((res) => this.snapshot!.toBlob(res, 'image/png'))
-        : null;
-      const file = blob ? new File([blob], 'cake-walk.png', { type: 'image/png' }) : null;
+        : null);
+    // 1. Phones (and some desktops): the share sheet with the score card image.
+    try {
+      const file = blob ? new File([blob], 'cake-walk-score.png', { type: 'image/png' }) : null;
       if (file && nav.canShare?.({ files: [file] })) {
-        await nav.share({ text: `${text}\n${url}`, files: [file] });
+        await nav.share({ text: full, files: [file] });
         return;
       }
+    } catch (e) {
+      if ((e as Error)?.name === 'AbortError') return;
+    }
+    // 2. Desktop: the image (and text where allowed) on the clipboard, ready to paste.
+    if (blob && typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+      const text = new Blob([full], { type: 'text/plain' });
+      const items: Record<string, Blob>[] = [
+        { 'image/png': blob, 'text/plain': text },
+        { 'image/png': blob },
+      ];
+      for (const item of items) {
+        try {
+          await navigator.clipboard.write([new ClipboardItem(item)]);
+          this.flash('Score card copied! Paste it anywhere');
+          return;
+        } catch {
+          /* try the next combination */
+        }
+      }
+    }
+    // 3. Text share, else copy the text and save the image.
+    try {
       if (nav.share) {
         await nav.share({ text, url });
         return;
@@ -423,11 +696,20 @@ export class Overlays {
     } catch (e) {
       if ((e as Error)?.name === 'AbortError') return;
     }
+    let copied = false;
     try {
-      await navigator.clipboard.writeText(`${text}\n${url}`);
-      this.flash('Copied to clipboard!');
+      await navigator.clipboard.writeText(full);
+      copied = true;
     } catch {
-      this.flash(text);
+      /* no clipboard */
     }
+    if (blob) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'cake-walk-score.png';
+      a.click();
+      window.setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      this.flash(copied ? 'Score card saved, text copied!' : 'Score card saved!');
+    } else this.flash(copied ? 'Copied to clipboard!' : text);
   }
 }

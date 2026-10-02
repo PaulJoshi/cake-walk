@@ -14,6 +14,8 @@ export class Title implements State {
   enter(g: Game): void {
     g.ui.showTitle();
     g.audio.stopMusic();
+    // Scores or a name change that couldn't reach the scoreboard earlier.
+    void g.scoreboard.flush();
     this.newRun(g);
   }
 

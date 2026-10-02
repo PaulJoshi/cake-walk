@@ -44,7 +44,7 @@ export class Spill implements Obstacle {
         const s = w.rng.sign();
         w.cake.omega += s * t.SPILL_SLIP_OMEGA * w.rng.range(0.6, 1);
         w.waiter.v = Math.max(0, w.waiter.v + w.rng.sign() * t.SPILL_SLIP_SPEED);
-        w.events.push({ type: 'slip' });
+        w.slip();
       }
     }
   }

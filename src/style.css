@@ -83,7 +83,8 @@ body {
 
 .cw-panel[data-screen='pause'],
 .cw-panel[data-screen='result'],
-.cw-panel[data-screen='controls'] {
+.cw-panel[data-screen='controls'],
+.cw-panel[data-screen='scores'] {
   background: rgba(26, 15, 31, 0.55);
 }
 
@@ -518,6 +519,241 @@ body {
 
 .cw-toast.show {
   opacity: 1;
+}
+
+/* ---------------------------------------------------------------- scores */
+
+/* Title: personal best and a quiet scoreboard link on one line. */
+.cw-best {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--px) * 2) calc(var(--px) * 6);
+}
+
+.cw-pb {
+  color: var(--gold);
+  font-weight: normal;
+}
+
+/* A text-only button: no frame, just a dotted underline. */
+#ui button.cw-link {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--px) * 2);
+  font-size: inherit;
+  color: var(--gold);
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: calc(var(--px) * 1) calc(var(--px) * 1);
+  text-decoration: underline dotted;
+  text-underline-offset: calc(var(--px) * 1.5);
+  text-shadow: calc(var(--px) * 1) calc(var(--px) * 1) 0 var(--shadow);
+}
+
+#ui button.cw-link[hidden] {
+  display: none;
+}
+
+.cw-trophy {
+  width: calc(var(--px) * 5);
+  height: calc(var(--px) * 5);
+  flex: none;
+  filter: drop-shadow(calc(var(--px) * 1) calc(var(--px) * 1) 0 var(--shadow));
+}
+
+/* Result: grade stamp and score side by side. */
+.cw-headline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--px) * 8);
+}
+
+.cw-headline .cw-grade {
+  font-size: calc(var(--px) * 32);
+}
+
+.cw-score {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--px) * 2);
+}
+
+.cw-score-n {
+  font-size: calc(var(--px) * 16);
+  color: var(--gold);
+  text-shadow: calc(var(--px) * 2) calc(var(--px) * 2) 0 var(--pink-dark);
+}
+
+.cw-score-l {
+  font-size: calc(var(--px) * 5);
+  color: var(--pink);
+  text-transform: uppercase;
+}
+
+.cw-parts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: calc(var(--px) * 1) calc(var(--px) * 5);
+  margin: 0 auto calc(var(--px) * 2);
+  max-width: calc(var(--px) * 240);
+  font-size: calc(var(--px) * 4.5);
+  opacity: 0.7;
+}
+
+.cw-rank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--px) * 2);
+  margin: 0;
+  font-size: calc(var(--px) * 6);
+  color: var(--gold);
+}
+
+.cw-rank:empty {
+  display: none;
+}
+
+/* Scoreboard card. */
+.cw-board {
+  width: min(92%, calc(var(--px) * 220));
+}
+
+.cw-worlds.small {
+  margin: 0 0 calc(var(--px) * 2);
+  gap: calc(var(--px) * 4);
+}
+
+#ui .cw-worlds.small .cw-world {
+  width: calc(var(--px) * 18);
+  height: calc(var(--px) * 18);
+}
+
+.cw-tabs {
+  display: flex;
+  justify-content: center;
+  gap: calc(var(--px) * 3);
+  margin: calc(var(--px) * 3) 0;
+}
+
+#ui .cw-tab {
+  font-size: calc(var(--px) * 6);
+  padding: calc(var(--px) * 2) calc(var(--px) * 4);
+  background: transparent;
+  color: var(--ink);
+  border-color: rgba(255, 248, 236, 0.35);
+  box-shadow: none;
+}
+
+#ui .cw-tab[aria-selected='true'] {
+  background: var(--ink);
+  color: var(--shadow);
+}
+
+.cw-ranks {
+  list-style: none;
+  margin: 0 0 calc(var(--px) * 3);
+  padding: 0;
+  font-size: calc(var(--px) * 6);
+  text-align: left;
+}
+
+.cw-ranks li {
+  display: grid;
+  grid-template-columns: calc(var(--px) * 14) 1fr auto;
+  gap: calc(var(--px) * 3);
+  padding: calc(var(--px) * 1.5) calc(var(--px) * 2);
+}
+
+.cw-ranks li:nth-child(odd) {
+  background: rgba(255, 248, 236, 0.05);
+}
+
+.cw-ranks li:first-child .cw-s {
+  color: var(--gold);
+}
+
+.cw-ranks li.me {
+  background: rgba(255, 111, 168, 0.25);
+  color: var(--ink);
+}
+
+.cw-ranks li.off {
+  margin-top: calc(var(--px) * 2);
+}
+
+.cw-r {
+  color: var(--pink);
+}
+
+.cw-n {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cw-empty {
+  margin: calc(var(--px) * 6) 0;
+  font-size: calc(var(--px) * 6);
+  opacity: 0.8;
+}
+
+.cw-board-foot .cw-small {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--px) * 2);
+}
+
+/* Name field (scoreboard footer and the Controls card). */
+.cw-name {
+  display: flex;
+  justify-content: center;
+  gap: calc(var(--px) * 3);
+  margin: calc(var(--px) * 2) 0;
+}
+
+.cw-name input {
+  font-family: var(--font);
+  font-size: max(16px, calc(var(--px) * 6));
+  width: min(100%, calc(var(--px) * 110));
+  min-width: 0;
+  padding: calc(var(--px) * 2) calc(var(--px) * 3);
+  color: var(--ink);
+  background: rgba(255, 248, 236, 0.08);
+  border: calc(var(--px) * 1) solid rgba(255, 248, 236, 0.5);
+  border-radius: 0;
+  pointer-events: auto;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.cw-name input:focus {
+  outline: calc(var(--px) * 1) solid var(--gold);
+  border-color: var(--gold);
+}
+
+#ui .cw-name button {
+  font-size: calc(var(--px) * 6);
+  padding: calc(var(--px) * 2) calc(var(--px) * 4);
+}
+
+.cw-namebox {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0 calc(var(--px) * 4);
+  margin-top: calc(var(--px) * 3);
+  font-size: calc(var(--px) * 6);
+  color: var(--pink);
 }
 
 /* Portrait: stack the logo so it fits the narrow view. */

@@ -171,6 +171,8 @@ export class Input {
 
   private onKey(e: KeyboardEvent, down: boolean): void {
     const target = e.target as HTMLElement | null;
+    // Typing a name in an overlay text field is not playing.
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
     const onButton = target && (target.tagName === 'BUTTON' || target.tagName === 'A');
     const code = e.code;
     const gameKey = WALK_KEYS.has(code) || LEFT_KEYS.has(code) || RIGHT_KEYS.has(code);

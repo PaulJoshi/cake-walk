@@ -114,8 +114,8 @@ Every obstacle telegraphs itself about a second ahead with a `!` bubble or anima
 
 ### Modes and seeds
 
-- **Play Daily** - everyone gets the same variation for today's date (`YYYY-MM-DD`).
-- **Free Play** - a random seed every round.
+- **Daily Challenge** - everyone gets the same variation for today's date (`YYYY-MM-DD`).
+- **Random** - a random seed every round.
 - `?seed=anything` forces a seed (great for replaying a friend's run).
 
 The layout is fixed; the seed varies the uncle's rhythm, the Roomba's route, the toddler's
@@ -131,12 +131,27 @@ throws you, the saucer's sway and the meteors' count, timing and first side.
 - **Lose:** the tower topples (_"The cake has left the building."_), fewer than 4 tiers remain
   (_"That's not a wedding cake. That's a cupcake."_), or time runs out (_"The best man toasted
   an empty table."_).
-- **Score** = tiers × 1000 + ⌊seconds left × 100⌋ + 250 per **CLUTCH** save (recovering from a
-  lean past 30° without toppling).
-- **Grades:** S = 7 tiers and ≥ 15 s left, A = 6+, B = 5, C = 4, F = loss. Best score and grade
-  are stored per mode and world in `localStorage`.
-- **Share** uses the Web Share API (with a PNG of the final frame when supported), otherwise it
-  copies e.g. `🎂 CAKE WALK — Daily 2026-09-30 — Grade S — 7/7 tiers — 17.3s left — 3 clutch saves`.
+- **Every try scores**, win or lose, with no ceiling. The score adds up:
+  - **Distance** up to 3,000 for how far you got, and **Cargo** 500 per tier carried the whole
+    way (a tier lost halfway keeps half).
+  - **Delivery** on a win: 2,000 + 1,000 per tier delivered, plus **Pace** of 100 per second
+    left (a loss earns a little pace too, scaled by how far it got).
+  - **Poise** up to 2,000 for a level cake (halved at an average lean of 6°), **Clutch** 250
+    per save (recovering from a lean past 30° without toppling), minus **Bumps** for every hit
+    (up to 200 by strength) and spill skid (40).
+
+  So two runs that end at the same spot still score differently. The parts are on the results
+  card; the formula is `src/score/formula.ts` and its constants live in `tuning.ts`.
+
+- **Grades:** S = 7 tiers and ≥ 15 s left, A = 6+, B = 5, C = 4, F = loss.
+- **Personal best:** one per world (Daily Challenge and Random share it), kept in IndexedDB with
+  the player's name and id. The title shows it next to a link to the scoreboard.
+- **Scoreboard:** top 10 per world, this week (ISO week, UTC) and all time. Each player gets a
+  random name (e.g. `WobblyOtter42`) that they can change under **Controls** or on the
+  scoreboard. See [Scoreboard](#scoreboard) for how it is stored.
+- **Share** sends a score card (the final frame plus the score) through the Web Share API, copies
+  it to the clipboard on desktop, or saves it, along with text like
+  `🎂 CAKE WALK — Daily Challenge 2026-09-30 — 19,880 pts — Grade S — 7/7 tiers — 17.3s left`.
 
 ## Running locally
 
@@ -213,7 +228,8 @@ reaction delay still wins. The perfect bot wins all 30 test seeds with 7 tiers i
 
 - **Unit (Vitest):** pendulum stability at rest, toppling past the limit, tiers above a fallen
   tier are removed with it, seeded RNG determinism, outcomes (win/topple/cupcake/timeout),
-  scoring and grade boundaries, share-text formatting, best-score storage, timer formatting.
+  scoring parts and grades, scoreboard sanity checks against real rounds, the scoreboard API
+  (against an in-memory Redis), the IndexedDB profile, share text, timer formatting.
 - **Bot:** the autopilot runs the full simulation headlessly on 30 seeds and must win each with
   ≥ 5 tiers in under 55 s. If it can't, re-tune the level, not the bot.
 - **Smoke (Playwright):** loads the built site, starts a game, holds walk for 3 s, and asserts no
@@ -236,6 +252,25 @@ Or from the CLI:
 npx vercel@latest        # first run links the project
 npx vercel@latest --prod
 ```
+
+### Scoreboard
+
+`api/scores.ts` is a Vercel Function backed by a free [Upstash Redis](https://upstash.com)
+database. Until the database is connected it answers 503 and the game simply hides the
+scoreboard; personal bests always work offline.
+
+One-time setup: in the Vercel project open **Storage → Create Database → Upstash for Redis**
+(free plan) and connect it to the project. That adds `KV_REST_API_URL` and `KV_REST_API_TOKEN`
+(plain `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` work too). Redeploy.
+
+- Only the top 100 per board are kept (`cw:all:<world>` and `cw:week:<week>:<world>` sorted
+  sets, plus a `cw:names` hash). Weekly boards expire 40 days after their last write.
+- Players are stored by a SHA-256 tag of a secret id that stays in their browser.
+- The server range-checks the round stats, recomputes the score from them (a hand-edited score is
+  refused), ignores runs faster than the fastest plausible win, and limits each IP to 20 writes
+  a minute. It can't stop a determined cheater; remove a bad entry with `ZREM` in the Upstash
+  console.
+- Autopilot (`?bot=1`) and debug (`?debug=1`) rounds are never recorded.
 
 ### Link previews and search
 

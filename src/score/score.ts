@@ -1,25 +1,16 @@
 import { T } from '../game/tuning';
 import type { Outcome } from '../game/World';
 import { WORLDS, isWorldId, type WorldId } from '../level/worlds';
+import { scoreParts, totalScore, type RoundStats, type ScoreParts } from './formula';
 
 export type Grade = 'S' | 'A' | 'B' | 'C' | 'F';
 export type Mode = 'daily' | 'free';
 
-export interface RoundResult {
-  outcome: Outcome;
-  tiers: number;
-  /** Seconds left on the clock when the round ended. */
-  secondsLeft: number;
-  clutches: number;
+export interface RoundResult extends RoundStats {
   mode: Mode;
   seed: string;
   /** Defaults to the classic wedding. */
   world?: WorldId;
-}
-
-export interface Best {
-  score: number;
-  grade: Grade;
 }
 
 export const FAIL_LINES: Record<
@@ -71,14 +62,18 @@ export function grade(r: RoundResult): Grade {
   return 'C';
 }
 
-/** Score = tiers x 1000 + floor(seconds left x 100) + 250 per clutch save. Losses score 0. */
+/** Every try scores; see scoreParts in formula.ts for how. */
 export function score(r: RoundResult): number {
-  if (r.outcome !== 'won') return 0;
-  return (
-    r.tiers * T.TIER_POINTS +
-    Math.floor(r.secondsLeft * T.TIME_POINTS_PER_S + 1e-6) +
-    r.clutches * T.CLUTCH_POINTS
-  );
+  return totalScore(r);
+}
+
+export function breakdown(r: RoundResult): ScoreParts {
+  return scoreParts(r);
+}
+
+/** 18402 -> "18,402" (fixed locale so it reads the same everywhere). */
+export function fmtScore(n: number): string {
+  return Math.round(n).toLocaleString('en-US');
 }
 
 const LOSS_WORD: Record<string, string> = {
@@ -87,69 +82,31 @@ const LOSS_WORD: Record<string, string> = {
   timeout: 'out of time',
 };
 
-/** e.g. "🎂 CAKE WALK — Daily Challenge 2026-09-30 — Grade S — 7/7 tiers — 17.3s left — 3 clutch saves" */
+/** e.g. "🎂 CAKE WALK — Daily Challenge 2026-09-30 — 18,402 pts — Grade S — 7/7 tiers — 17.3s left" */
 export function shareText(r: RoundResult): string {
   const mode = r.mode === 'daily' ? `Daily Challenge ${r.seed}` : `Random #${r.seed}`;
-  const g = grade(r);
-  const parts = [`🎂 CAKE WALK`, mode, `Grade ${g}`];
+  const parts = [`🎂 CAKE WALK`, mode, `${fmtScore(score(r))} pts`, `Grade ${grade(r)}`];
   if (r.world && r.world !== 'wedding') parts.splice(1, 0, WORLDS[r.world].name);
   if (r.outcome === 'won') {
     parts.push(`${r.tiers}/${T.TIER_COUNT} tiers`, `${r.secondsLeft.toFixed(1)}s left`);
   } else {
-    parts.push(LOSS_WORD[r.outcome] ?? 'disaster');
+    parts.push(LOSS_WORD[r.outcome] ?? 'disaster', `${Math.round(r.progress * 100)}% of the way`);
   }
   if (r.clutches > 0) parts.push(`${r.clutches} clutch save${r.clutches === 1 ? '' : 's'}`);
   return parts.join(' — ');
 }
-
-const GRADE_RANK: Record<Grade, number> = { F: 0, C: 1, B: 2, A: 3, S: 4 };
 
 export interface KV {
   getItem(k: string): string | null;
   setItem(k: string, v: string): void;
 }
 
-function storage(): KV | null {
+export function storage(): KV | null {
   try {
     return typeof localStorage !== 'undefined' ? localStorage : null;
   } catch {
     return null;
   }
-}
-
-/** The wedding keeps its original keys so existing bests carry over. */
-const key = (mode: Mode, world: WorldId = 'wedding') =>
-  world === 'wedding' ? `cakewalk:best:${mode}` : `cakewalk:best:${world}:${mode}`;
-
-export function loadBest(
-  mode: Mode,
-  kv: KV | null = storage(),
-  world: WorldId = 'wedding',
-): Best | null {
-  try {
-    const raw = kv?.getItem(key(mode, world));
-    if (!raw) return null;
-    const b = JSON.parse(raw) as Best;
-    return typeof b.score === 'number' && typeof b.grade === 'string' ? b : null;
-  } catch {
-    return null;
-  }
-}
-
-/** Save if better than the stored best. Returns true for a new best. */
-export function saveBest(r: RoundResult, kv: KV | null = storage()): boolean {
-  const s = score(r);
-  const g = grade(r);
-  const prev = loadBest(r.mode, kv, r.world);
-  const better =
-    !prev || s > prev.score || (s === prev.score && GRADE_RANK[g] > GRADE_RANK[prev.grade]);
-  if (!better || (s === 0 && prev)) return false;
-  try {
-    kv?.setItem(key(r.mode, r.world), JSON.stringify({ score: s, grade: g } satisfies Best));
-  } catch {
-    return false;
-  }
-  return s > 0;
 }
 
 const WORLD_KEY = 'cakewalk:world';
