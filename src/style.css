@@ -620,6 +620,27 @@ body {
   display: none;
 }
 
+/* A friend's challenge: who and the score to beat; then how this try compares. */
+.cw-challenge .cw-score {
+  align-items: center;
+  margin-bottom: calc(var(--px) * 4);
+}
+
+.cw-challenge .cw-joke b,
+.cw-vs {
+  color: var(--pink);
+  font-weight: normal;
+}
+
+.cw-vs {
+  margin: calc(var(--px) * 2) 0;
+  font-size: calc(var(--px) * 6);
+}
+
+.cw-vs.win {
+  color: var(--gold);
+}
+
 /* Scoreboard card. */
 .cw-board {
   width: min(92%, calc(var(--px) * 220));

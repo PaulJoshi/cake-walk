@@ -12,7 +12,8 @@ export class Title implements State {
   private restart = 0;
 
   enter(g: Game): void {
-    g.ui.showTitle();
+    if (g.challenge) g.ui.showChallenge();
+    else g.ui.showTitle();
     g.audio.stopMusic();
     // Scores or a name change that couldn't reach the scoreboard earlier.
     void g.scoreboard.flush();

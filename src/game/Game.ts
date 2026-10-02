@@ -5,6 +5,7 @@ import { WORLDS, isWorldId, type WorldId } from '../level/worlds';
 import type { Renderer } from '../render/Renderer';
 import { view, type Screen } from '../render/Screen';
 import { Scoreboard } from '../score/board';
+import { isDailySeed, parseChallenge, type Challenge } from '../score/challenge';
 import { Profile } from '../score/profile';
 import {
   fmtScore,
@@ -45,6 +46,8 @@ export class Game {
   readonly debug: boolean;
   /** ?bot=1: the autopilot plays the real round (demos, visual checks). */
   readonly botPlay: boolean;
+  /** A friend's challenge link: their world and seed, and the score to beat. */
+  challenge: Challenge | null;
   fps = 60;
   /** Name, personal bests and unsent scores (IndexedDB). */
   readonly profile = new Profile();
@@ -68,8 +71,9 @@ export class Game {
     const params = new URLSearchParams(location.search);
     this.debug = params.get('debug') === '1';
     this.botPlay = params.get('bot') === '1';
-    this.urlSeed = params.get('seed');
-    this.seed = this.urlSeed ?? todaySeed();
+    this.challenge = params.has('by') ? parseChallenge(params) : null;
+    this.urlSeed = this.challenge ? null : params.get('seed');
+    this.seed = this.challenge?.seed ?? this.urlSeed ?? todaySeed();
     const urlWorld = params.get('world');
     this.worldId = isWorldId(urlWorld) ? urlWorld : (loadWorld() ?? 'wedding');
     this.world = new World(this.seed, this.worldId);
@@ -107,14 +111,31 @@ export class Game {
 
   /** Begin a new round in the given mode (instant retry uses the same mode). */
   newRound(mode: Mode = this.mode): void {
+    const c = this.challenge;
+    if (c) {
+      // A challenge replays the sender's exact round, Daily or Random, any day.
+      mode = isDailySeed(c.seed) ? 'daily' : 'free';
+      this.worldId = c.world;
+    }
     this.mode = mode;
-    this.seed = this.urlSeed ?? (mode === 'daily' ? todaySeed() : randomSeed());
+    this.seed = c?.seed ?? this.urlSeed ?? (mode === 'daily' ? todaySeed() : randomSeed());
     this.world = new World(this.seed, this.worldId);
     this.acc = 0;
     this.slowmo = 0;
     this.renderer.reset(this.world);
     this.audio.unlock();
     this.setState('countdown');
+  }
+
+  /** Drop the challenge (back to the title, or on to normal play) and tidy the address bar. */
+  endChallenge(): void {
+    if (!this.challenge) return;
+    this.challenge = null;
+    try {
+      history.replaceState(null, '', '/');
+    } catch {
+      /* sandboxed */
+    }
   }
 
   /** Pick a world on the title screen; the attract run behind it switches straight away. */
@@ -205,6 +226,7 @@ export class Game {
             : dev === 'keyboard'
               ? 'A / D TO BALANCE'
               : 'MOVE MOUSE TO BALANCE',
+      target: this.challenge ? `BEAT ${fmtScore(this.challenge.score)}` : null,
       debug: this.debug,
       fps: this.fps,
     });
