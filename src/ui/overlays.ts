@@ -561,6 +561,7 @@ export class Overlays {
     this.open(
       'badges',
       `<div class="cw-card cw-badgecard">
+        <button class="cw-close" data-action="back" aria-label="Close" title="Close">✕</button>
         <h2>BADGES</h2>
         <p class="cw-small">${this.badgeCount()} earned</p>
         <div class="cw-badge-body">${body}</div>
