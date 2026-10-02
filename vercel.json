@@ -4,7 +4,13 @@
   "installCommand": "npm ci",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "rewrites": [{ "source": "/((?!assets/|_vercel/|api/).*)", "destination": "/index.html" }],
+  "functions": {
+    "api/challenge.ts": { "includeFiles": "dist/index.html" }
+  },
+  "rewrites": [
+    { "source": "/c", "destination": "/api/challenge" },
+    { "source": "/((?!assets/|_vercel/|api/).*)", "destination": "/index.html" }
+  ],
   "headers": [
     {
       "source": "/assets/(.*)",

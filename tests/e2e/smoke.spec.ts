@@ -43,3 +43,21 @@ test('loads, starts, walks for 3 s with no console errors and the timer decreasi
   expect(x).toBeGreaterThan(100);
   expect(errors).toEqual([]);
 });
+
+test('a challenge link opens that round with the score to beat', async ({ page }) => {
+  await page.goto('/c?world=pirate&seed=K3J9QZ&by=WobblyOtter42&score=18402');
+  const card = page.locator('.cw-challenge');
+  await expect(card).toContainText('WobblyOtter42');
+  await expect(card).toContainText('18,402');
+  await page.getByRole('button', { name: 'Play this round' }).click();
+  const round = () =>
+    page.evaluate(() => {
+      const g = (
+        window as unknown as {
+          cakeWalk: { stateName: string; seed: string; world: { worldId: string } };
+        }
+      ).cakeWalk;
+      return `${g.stateName} ${g.world.worldId} ${g.seed}`;
+    });
+  await expect.poll(round, { timeout: 8000 }).toBe('playing pirate K3J9QZ');
+});

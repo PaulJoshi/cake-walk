@@ -12,6 +12,8 @@ export interface HudOptions {
   /** Tutorial hint lines for the current device. */
   walkHint: string;
   balanceHint: string;
+  /** A friend's score to beat, shown small under the timer. */
+  target?: string | null;
 }
 
 /** Timer text: "00:60" at the start, then whole seconds, tenths under 10 s. */
@@ -51,7 +53,14 @@ export function drawHud(
   ctx.fillStyle = 'rgba(26,15,31,0.7)';
   ctx.fillRect(4, 4, 7 * 12 + 6, 16);
   for (let j = 0; j < T.TIER_COUNT; j++) cakeIcon(ctx, 8 + j * 12, 8, j < w.cake.count);
-  if (w.clutches > 0) text(ctx, `CLUTCH x${w.clutches}`, 8, 28, 8, GOLD, 'left');
+  // A friend's score to beat sits quietly under the tiers, clear of the hints.
+  const target = o.target && !w.finished ? o.target : null;
+  if (target) {
+    ctx.globalAlpha = 0.7;
+    text(ctx, target, 8, 28, 8, INK, 'left');
+    ctx.globalAlpha = 1;
+  }
+  if (w.clutches > 0) text(ctx, `CLUTCH x${w.clutches}`, 8, target ? 40 : 28, 8, GOLD, 'left');
 
   // Distance-to-table progress bar (bottom of the view).
   const half = Math.min(120, view.w / 2 - 24);
