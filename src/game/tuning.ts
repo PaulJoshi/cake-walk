@@ -189,6 +189,92 @@ export const T = {
   CONGA_SLIDE: 12,
   CONGA_SPEED_MULT: 0.7,
 
+  // ---------------------------------------------------------------- pirate ship world
+  // Rolling deck: the ship rocks on a seeded swell that keeps nudging the cake.
+  SWELL_PERIOD_MIN: 3.6,
+  SWELL_PERIOD_MAX: 5.0,
+  /** Peak angular acceleration the swell puts on the cake (rad/s^2). */
+  SWELL_ACCEL_MIN: 0.08,
+  SWELL_ACCEL_MAX: 0.15,
+  /** The swell fades in over this distance after the galley (px). */
+  SWELL_FADE_IN: 160,
+  // Loose cannonballs roll across the deck (in depth) with the swell.
+  CANNON_SHIFT: 40,
+  CANNON_COUNT_MIN: 2,
+  CANNON_COUNT_MAX: 3,
+  /** Seeded gap between neighbouring cannonballs (px). */
+  CANNON_GAP_MIN: 45,
+  CANNON_GAP_MAX: 75,
+  /** How far across the deck they roll (depth units either side of the lane). */
+  CANNON_DEPTH: 1.7,
+  /** Seeded lag of each ball behind the swell (rad). */
+  CANNON_LAG_MAX: 1.2,
+  CANNON_HALF_W: 5,
+  CANNON_HOP: 70,
+  CANNON_OMEGA: 0.55,
+  CANNON_SLIDE: 18,
+  CANNON_SPEED_MULT: 0.75,
+  CANNON_COOLDOWN: 0.8,
+  // Swinging rum barrel: a pendulum from the yardarm that clips the top of the cake.
+  BARREL_SHIFT: 50,
+  BARREL_PERIOD_MIN: 3.4,
+  BARREL_PERIOD_MAX: 4.2,
+  /** Seeded swing amplitude (rad). */
+  BARREL_AMP_MIN: 62 * DEG,
+  BARREL_AMP_MAX: 72 * DEG,
+  BARREL_ROPE: 60,
+  /** Height of the barrel's centre above the tray at the bottom of its swing (px). */
+  BARREL_LOW: 62,
+  BARREL_RADIUS: 8,
+  BARREL_OMEGA: 0.35,
+  BARREL_SLIDE: 60,
+  // Walk the plank: a springy gangplank between the two ships. Fast steps make it bounce.
+  PLANK_SHIFT: 40,
+  PLANK_LEN_MIN: 120,
+  PLANK_LEN_MAX: 165,
+  /** Static sag in the middle of the plank under the waiter (px). */
+  PLANK_SAG: 5,
+  /** Plank spring stiffness (1/s^2) and damping (1/s). */
+  PLANK_K: 70,
+  PLANK_DAMP: 2.2,
+  /** Plank speed kick per footstep at full walking speed (px/s). Scales with speed^2. */
+  PLANK_KICK: 26,
+  /** Lean kick (rad/s) per px of bounce at the bottom of each bounce (random side). */
+  PLANK_WOBBLE: 0.05,
+  // The captain's parrot perches on the top tier, flaps about and flies off again.
+  PARROT_SHIFT: 50,
+  /** Seconds it circles (telegraph) before landing. */
+  PARROT_CIRCLE: 1.0,
+  PARROT_PERCH_MIN: 2.0,
+  PARROT_PERCH_MAX: 3.2,
+  PARROT_MASS: 0.22,
+  PARROT_LAND_OMEGA: 0.25,
+  PARROT_FLAP_MIN: 0.35,
+  PARROT_FLAP_MAX: 0.7,
+  PARROT_FLAP_OMEGA: 0.16,
+  // Kraken: a tentacle bursts up through the deck, blocks the way, then slams the deck.
+  KRAKEN_SHIFT: 50,
+  /** Distance before the tentacle that makes it rise (px). */
+  KRAKEN_TRIGGER: 130,
+  KRAKEN_RISE: 0.6,
+  KRAKEN_TIME_MIN: 1.5,
+  KRAKEN_TIME_MAX: 2.8,
+  /** Wind-up before the slam (telegraph, s). */
+  KRAKEN_WINDUP: 0.5,
+  KRAKEN_HALF_W: 9,
+  /** The slam jolts anyone closer than this (px), weaker with distance. */
+  KRAKEN_SLAM_RANGE: 80,
+  KRAKEN_SLAM_OMEGA: 0.4,
+  KRAKEN_SLAM_SLIDE: 18,
+  KRAKEN_SLAM_HOP: 60,
+  // Rogue wave (global event): the lookout rings 3-2-1, then a wave breaks over the deck.
+  WAVE_SHIFT: 3,
+  WAVE_OMEGA: 0.7,
+  WAVE_SLIDE: 28,
+  WAVE_SPEED_MULT: 0.6,
+  /** The deck stays slippery this long after the wave (s). */
+  WAVE_WET_TIME: 3,
+
   // ---------------------------------------------------------------- set-down
   /** Max speed to set the cake down (px/s). */
   SET_DOWN_SPEED: 8,

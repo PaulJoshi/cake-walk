@@ -4,7 +4,8 @@ import { createIntent, type Intent } from './intent';
 export type { Intent } from './intent';
 
 export type BalanceDevice = 'mouse' | 'keyboard' | 'touch' | 'tilt';
-export type InputAction = 'retry' | 'pause' | 'mute' | 'any' | 'fullscreen' | `zone${number}`;
+export type InputAction =
+  'retry' | 'pause' | 'mute' | 'any' | 'fullscreen' | 'prevWorld' | 'nextWorld' | `zone${number}`;
 
 const WALK_KEYS = new Set(['Space', 'KeyW', 'ArrowUp']);
 const LEFT_KEYS = new Set(['KeyA', 'ArrowLeft']);
@@ -24,6 +25,9 @@ const NOT_ANY = new Set([
   'AltRight',
   'ControlLeft',
   'ControlRight',
+  // Left/right arrows pick the world on the title screen instead of starting.
+  'ArrowLeft',
+  'ArrowRight',
 ]);
 /** Tilt angle (degrees) that maps to a full tray offset. */
 const TILT_RANGE = 16;
@@ -181,6 +185,8 @@ export class Input {
       else if (code === 'KeyP' || code === 'Escape') this.emit('pause');
       else if (code === 'KeyM') this.emit('mute');
       else if (code === 'KeyF') this.emit('fullscreen');
+      else if (code === 'ArrowLeft') this.emit('prevWorld');
+      else if (code === 'ArrowRight') this.emit('nextWorld');
       else if (/^Digit\d$/.test(code)) this.emit(`zone${Number(code.slice(5))}`);
       if (!NOT_ANY.has(code) && !e.metaKey && !e.ctrlKey && !e.altKey) this.emit('any');
     } else this.keys.delete(code);

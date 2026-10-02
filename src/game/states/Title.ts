@@ -17,8 +17,9 @@ export class Title implements State {
     this.newRun(g);
   }
 
-  private newRun(g: Game): void {
-    this.world = new World(`attract-${randomSeed()}`);
+  /** Start a fresh autopilot run in the picked world. */
+  newRun(g: Game): void {
+    this.world = new World(`attract-${randomSeed()}`, g.worldId);
     this.bot = new Autopilot();
     this.restart = 0;
     g.renderer.reset(this.world);

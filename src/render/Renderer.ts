@@ -5,6 +5,7 @@ import {
   Bouquet,
   Conga,
   Grandma,
+  Parrot,
   Roomba,
   Spill,
   Toddler,
@@ -21,6 +22,8 @@ import { view } from './Screen';
 import { buildSprites, type PersonSprites, type Sprite, type SpriteBank } from './sprites';
 import { drawHud, type HudOptions } from './hud';
 import { drawDebug } from './debug';
+import { ShipScene } from './ship';
+import { buildShipSprites } from './shipSprites';
 
 const TRAY_W = 62;
 /** Tray top height above the floor. */
@@ -59,6 +62,7 @@ export class Renderer {
   readonly texts = new FloatTexts(24);
   readonly shake: Shake;
   private readonly bg: Background;
+  private readonly ship: ShipScene;
   private readonly cake = new CakeCanvas();
   private readonly debris: Debris[] = [];
   private readonly decals: Decal[] = [];
@@ -73,6 +77,7 @@ export class Renderer {
   constructor(reducedMotion: boolean) {
     this.sprites = buildSprites();
     this.bg = new Background(this.sprites);
+    this.ship = new ShipScene(buildShipSprites());
     this.shake = new Shake(!reducedMotion);
     for (let i = 0; i < 10; i++)
       this.debris.push({
@@ -106,6 +111,7 @@ export class Renderer {
   }
 
   reset(w: World): void {
+    this.camera.length = w.level.LENGTH;
     this.camera.reset(w.waiter.x);
     this.particles.clear();
     this.texts.clear();
@@ -121,7 +127,7 @@ export class Renderer {
 
   /** World-space tray top-centre for the current waiter state. */
   private trayPos(w: World): { x: number; y: number } {
-    return { x: w.waiter.x + w.waiter.tray, y: FLOOR_Y - TRAY_LIFT - w.waiter.y };
+    return { x: w.waiter.x + w.waiter.tray, y: FLOOR_Y - TRAY_LIFT - w.waiter.y + w.sink };
   }
 
   private addDecal(x: number, y: number, wdt: number, color: string): void {
@@ -271,6 +277,59 @@ export class Renderer {
             FLOOR_Y + 4,
           );
         break;
+      case 'wave':
+        this.shake.add(0.9);
+        this.texts.spawn('ROGUE WAVE!', view.w / 2, 64, '#6fd3ff', 24, 1.2, true);
+        for (let i = 0; i < 80; i++)
+          this.particles.spawn(
+            'blob',
+            this.camera.x + Math.random() * view.w,
+            120 + Math.random() * 30,
+            (Math.random() - 0.5) * 80,
+            -60 - Math.random() * 120,
+            1.2 + Math.random() * 0.6,
+            i % 3 ? '#9fe0f0' : '#e6f8ff',
+            1 + (i % 2),
+            380,
+            FLOOR_Y + 30,
+          );
+        break;
+      case 'slam':
+      case 'tentacle':
+        this.shake.add(e.type === 'slam' ? 0.6 : 0.3);
+        for (let i = 0; i < 10; i++)
+          this.particles.spawn(
+            'spark',
+            (e.type === 'slam' ? e.x : w.waiter.x + 120) + (Math.random() - 0.5) * 30,
+            FLOOR_Y - 2,
+            (Math.random() - 0.5) * 140,
+            -40 - Math.random() * 90,
+            0.6,
+            '#8f5a36',
+            2,
+            300,
+            FLOOR_Y + 4,
+          );
+        break;
+      case 'boing':
+        this.shake.add(0.1 * e.strength);
+        break;
+      case 'flap':
+      case 'squawk':
+        for (let i = 0; i < 4; i++)
+          this.particles.spawn(
+            'petal',
+            tp.x + (Math.random() - 0.5) * 20,
+            tp.y - w.cake.count * T.TIER_H - 8,
+            (Math.random() - 0.5) * 60,
+            -20 - Math.random() * 30,
+            1,
+            ['#e8283c', '#3fbf4a', '#2e7fd6'][i % 3],
+            1,
+            60,
+            FLOOR_Y + 4,
+          );
+        break;
       case 'placed':
         this.place = {
           active: true,
@@ -331,7 +390,7 @@ export class Renderer {
       pl.t += dt;
       if (pl.t >= 0.6) {
         pl.done = true;
-        const tx = LEVEL.TABLE.x;
+        const tx = w.level.TABLE.x;
         for (let i = 0; i < 90; i++)
           this.particles.spawn(
             'confetti',
@@ -384,9 +443,13 @@ export class Renderer {
     ctx.fillRect(0, 0, view.w, view.h);
     // Everything below is drawn in scene coordinates, placed inside the (possibly taller) view.
     ctx.translate(this.shake.ox, this.shake.oy + view.sceneY);
-    this.bg.drawFar(ctx, cam, this.time);
-    this.bg.drawFloor(ctx, cam, this.time);
-    this.bg.drawMid(ctx, cam, this.time, this.gaspBubbles > 0);
+    const pirate = w.worldId === 'pirate';
+    if (pirate) this.ship.drawBack(ctx, w, cam, this.time, this.gaspBubbles > 0);
+    else {
+      this.bg.drawFar(ctx, cam, this.time);
+      this.bg.drawFloor(ctx, cam, this.time);
+      this.bg.drawMid(ctx, cam, this.time, this.gaspBubbles > 0);
+    }
 
     // Floor decals: spill, frosting splats.
     this.drawSpill(ctx, w, cam);
@@ -399,12 +462,18 @@ export class Renderer {
     }
 
     // Set pieces and obstacles behind the lane, then the waiter, then anything in front.
-    this.drawKitchen(ctx, cam);
-    this.drawDJ(ctx, w, cam);
+    if (pirate) this.ship.drawPieces(ctx, cam, this.time);
+    else {
+      this.drawKitchen(ctx, cam);
+      this.drawDJ(ctx, w, cam);
+      this.drawTableSet(ctx, cam);
+    }
     this.drawTable(ctx, w, cam);
     this.drawObstacles(ctx, w, cam, true);
+    if (pirate) this.ship.drawObstacles(ctx, w, cam, this.time, true);
     this.drawWaiter(ctx, w, cam);
     this.drawObstacles(ctx, w, cam, false);
+    if (pirate) this.ship.drawObstacles(ctx, w, cam, this.time, false);
     this.drawBouquetFlight(ctx, w, cam);
 
     for (const d of this.debris) {
@@ -424,9 +493,12 @@ export class Renderer {
     ctx.translate(0, view.sceneY);
     this.texts.draw(ctx, cam, (s) => `${s}px "Press Start 2P", monospace`);
     if (this.gaspBubbles > 0 && !w.finished) {
-      const n = this.bg.visibleGuests(cam, this.guestXs);
+      const n = pirate
+        ? this.ship.visibleGuests(cam, this.guestXs)
+        : this.bg.visibleGuests(cam, this.guestXs);
+      const [a, b] = pirate ? ['ARRR!', 'AVAST!'] : ['OOOH!', 'OH NO!'];
       for (let i = 0; i < n; i += 2)
-        bubble(ctx, i % 4 ? 'OOOH!' : 'OH NO!', this.guestXs[i], 150 + (i % 3) * 4, '#9b2d5a');
+        bubble(ctx, i % 4 ? a : b, this.guestXs[i], 150 + (i % 3) * 4, '#9b2d5a');
     }
     if (opts.debug) drawDebug(ctx, w, cam, opts.fps);
     ctx.restore();
@@ -555,7 +627,8 @@ export class Renderer {
     else text(ctx, 'DJ', x, sy + 1, 8, '#b98cff', 'center', false);
   }
 
-  private drawTable(ctx: CanvasRenderingContext2D, w: World, cam: number): void {
+  /** The wedding's floral arch and cake table. */
+  private drawTableSet(ctx: CanvasRenderingContext2D, cam: number): void {
     const x = Math.round(LEVEL.TABLE.x - cam);
     if (x < -100 || x > view.w + 100) return;
     const base = depthY(0.6);
@@ -589,9 +662,17 @@ export class Renderer {
     for (let i = -30; i < 30; i += 8) ctx.fillRect(x + i, top + 4, 4, 3);
     ctx.fillStyle = '#d8c7b2';
     for (let i = -28; i < 30; i += 7) ctx.fillRect(x + i, top + 8, 1, base - top - 8);
+  }
+
+  /** The set-down zone marker and the cake being placed (both worlds). */
+  private drawTable(ctx: CanvasRenderingContext2D, w: World, cam: number): void {
+    const table = w.level.TABLE;
+    const x = Math.round(table.x - cam);
+    if (x < -100 || x > view.w + 100) return;
+    const top = FLOOR_Y - TRAY_LIFT;
     // Zone marker on the floor.
-    const z0 = Math.round(LEVEL.TABLE.x0 - cam);
-    const z1 = Math.round(LEVEL.TABLE.x1 - cam);
+    const z0 = Math.round(table.x0 - cam);
+    const z1 = Math.round(table.x1 - cam);
     const on = w.inTableZone;
     ctx.globalAlpha = on ? 0.6 : 0.25 + 0.15 * Math.sin(this.time * 4);
     ctx.fillStyle = on ? '#6be38a' : GOLD;
@@ -603,27 +684,28 @@ export class Renderer {
     if (this.place.active) {
       const p = Math.min(1, this.place.t / 0.6);
       const e = 1 - (1 - p) * (1 - p);
-      const cx = this.place.fromX + (LEVEL.TABLE.x - this.place.fromX) * e - cam;
+      const cx = this.place.fromX + (table.x - this.place.fromX) * e - cam;
       const cy = this.place.fromY + (top - this.place.fromY) * e - Math.sin(p * Math.PI) * 10;
-      this.cake.render(
-        T,
-        w.cake,
-        this.sprites.topper,
-        this.bouquetOn(w) ? this.sprites.bouquet : null,
-        this.bouquetOffset(w),
-      );
+      this.cake.render(T, w.cake, this.sprites.topper, this.topSprite(w), this.topOffset(w));
       ctx.drawImage(this.cake.canvas, Math.round(cx - PIVOT_X), Math.round(cy - PIVOT_Y));
     }
   }
 
-  private bouquetOn(w: World): boolean {
+  /** Whatever sits on the top tier: the bouquet, or the captain's parrot. */
+  private topSprite(w: World): Sprite | null {
     const b = this.ob(w, Bouquet);
-    return !!b && b.state === 'landed';
+    if (b && b.state === 'landed') return this.sprites.bouquet;
+    const p = this.ob(w, Parrot);
+    if (p && p.onCake)
+      return p.sinceFlap < 0.18 ? this.ship.sprites.parrotFly : this.ship.sprites.parrot;
+    return null;
   }
 
-  private bouquetOffset(w: World): number {
+  private topOffset(w: World): number {
     const b = this.ob(w, Bouquet);
-    return b ? Math.round(b.offset) : 0;
+    if (b) return Math.round(b.offset);
+    const p = this.ob(w, Parrot);
+    return p ? p.side * 4 : 0;
   }
 
   private person(
@@ -775,16 +857,18 @@ export class Renderer {
   private drawWaiter(ctx: CanvasRenderingContext2D, w: World, cam: number): void {
     const wt = w.waiter;
     const x = Math.round(wt.x - cam);
-    const feet = FLOOR_Y - Math.round(wt.y);
+    const floor = FLOOR_Y + Math.round(w.sink);
+    const feet = floor - Math.round(wt.y);
     const moving = wt.v > 3;
     const frame = moving ? Math.floor(wt.stride / 4) % 8 : 0;
-    const spr = moving ? this.sprites.waiter[frame] : this.sprites.waiterIdle;
+    const bank = w.worldId === 'pirate' ? this.ship.sprites : this.sprites;
+    const spr = moving ? bank.waiter[frame] : bank.waiterIdle;
     const bob = moving && frame % 4 === 2 ? 1 : 0;
     const top = feet - spr.height - bob;
     // Shadow.
     ctx.globalAlpha = 0.25;
     ctx.fillStyle = '#1a0f1f';
-    ctx.fillRect(x - 9, FLOOR_Y, 18, 2);
+    ctx.fillRect(x - 9, floor, 18, 2);
     ctx.globalAlpha = 1;
     ctx.drawImage(spr, x - 7, top);
     // Sweat drop grows with the lean.
@@ -826,14 +910,7 @@ export class Renderer {
       count = this.topple.count;
       slideX = this.topple.slide;
     }
-    this.cake.render(
-      T,
-      w.cake,
-      this.sprites.topper,
-      this.bouquetOn(w) ? this.sprites.bouquet : null,
-      this.bouquetOffset(w),
-      count,
-    );
+    this.cake.render(T, w.cake, this.sprites.topper, this.topSprite(w), this.topOffset(w), count);
     ctx.save();
     ctx.translate(tx + Math.round(slideX), ty);
     ctx.rotate(theta);
@@ -876,6 +953,11 @@ export class Renderer {
       if (o.alert <= 0.05) continue;
       let y = FLOOR_Y - 58;
       if (o instanceof BassDrop) continue;
+      const sy = w.worldId === 'pirate' ? this.ship.alertY(o, w) : null;
+      if (sy !== null) {
+        if (sy < 0) continue;
+        y = sy;
+      }
       if (o instanceof Bouquet) y = depthY(1.3) - 52;
       if (o instanceof Roomba) y = FLOOR_Y - 26;
       if (o instanceof Spill) y = FLOOR_Y - 18;

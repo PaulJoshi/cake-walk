@@ -48,7 +48,7 @@ export const OUTFIT = [
 ];
 
 // ------------------------------------------------------------------ waiter
-const WAITER_TOP = [
+export const WAITER_TOP = [
   '.....hhhh.....',
   '....hhhhhhh...',
   '...hhhhhhhhh..',
@@ -73,7 +73,7 @@ const WAITER_TOP = [
 ];
 
 /** Generate leg rows: each leg is 3 px wide and slants by dx pixels over its length. */
-function legs(dxBack: number, dxFront: number, rows = 14): string[] {
+export function legs(dxBack: number, dxFront: number, rows = 14): string[] {
   const out: string[] = [];
   for (let r = 0; r < rows; r++) {
     const row = new Array(14).fill('.');
@@ -98,7 +98,7 @@ function legs(dxBack: number, dxFront: number, rows = 14): string[] {
   return out;
 }
 
-const WAITER_PAL: Palette = {
+export const WAITER_PAL: Palette = {
   h: '#3b2416',
   s: '#f2c29b',
   e: '#1a1020',
@@ -112,7 +112,7 @@ const WAITER_PAL: Palette = {
 };
 
 // ------------------------------------------------------------------ people (guests etc.)
-const HEAD_M = [
+export const HEAD_M = [
   '....hhhh....',
   '...hhhhhh...',
   '...hssssh...',
@@ -121,7 +121,7 @@ const HEAD_M = [
   '...ssmmss...',
   '....ssss....',
 ];
-const HEAD_F = [
+export const HEAD_F = [
   '...hhhhhh...',
   '..hhhhhhhh..',
   '..hhsssshh..',
@@ -152,7 +152,7 @@ const TORSO_SUIT = [
   '..CCCCCCCC..',
   '..DDDDDDDD..',
 ];
-const TORSO_DRESS = [
+export const TORSO_DRESS = [
   '....CCCC....',
   '...CCCCCC...',
   '..sCCCCCCs..',
@@ -165,7 +165,7 @@ const TORSO_DRESS = [
   '.CCCCCCCCCC.',
   '.CCCCCCCCCC.',
 ];
-const LEGS_SUIT = [
+export const LEGS_SUIT = [
   '..DDD..DDD..',
   '..DDD..DDD..',
   '..DDD..DDD..',
@@ -178,7 +178,7 @@ const LEGS_SUIT = [
   '..DDD..DDD..',
   '..kkkk.kkkk.',
 ];
-const LEGS_DRESS = [
+export const LEGS_DRESS = [
   '.CCCCCCCCCC.',
   'CCCCCCCCCCCC',
   'CCCCCCCCCCCC',
@@ -247,7 +247,7 @@ export interface PersonSprites {
   lowerStep: Sprite;
 }
 
-function darken(hex: string, f: number): string {
+export function darken(hex: string, f: number): string {
   const n = parseInt(hex.slice(1), 16);
   const r = Math.round(((n >> 16) & 255) * f);
   const g = Math.round(((n >> 8) & 255) * f);
@@ -255,7 +255,7 @@ function darken(hex: string, f: number): string {
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
 }
 
-function stepLegs(rows: string[]): string[] {
+export function stepLegs(rows: string[]): string[] {
   // Shift the right leg one pixel out and the left leg one pixel in for a stride.
   return rows.map((r, i) => (i < rows.length / 2 ? r : `.${r.slice(0, -1)}`));
 }

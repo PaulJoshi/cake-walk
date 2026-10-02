@@ -1,7 +1,5 @@
 import type { World } from '../game/World';
 import { createIntent, type Intent } from '../input/intent';
-import { LEVEL } from '../level/level';
-import { Grandma } from '../level/obstacles/grandma';
 import { Spill } from '../level/obstacles/spill';
 import type { Span } from '../level/obstacles/types';
 
@@ -18,12 +16,15 @@ export interface AutopilotOptions {
   feather?: boolean;
   /** Feed-forward gain from walking acceleration to tray offset (px per px/s^2). */
   kappa?: number;
+  /** Fraction of the tray offset given up per update, drifting it back to centre. */
+  center?: number;
 }
 
 /**
  * PD-controller bot. Balance: move the tray towards the predicted lean ("get under it").
  * Walking: walk unless walking would run into a predicted lane hazard while braking would
- * not; queue politely behind grandma; stop inside the table zone. Used by attract mode
+ * not; queue politely behind blockers (grandma, the kraken); stop inside the table zone; ease
+ * the tray back towards the centre so there is reach left for the next lean. Used by attract mode
  * and the headless bot test.
  */
 export class Autopilot {
@@ -32,7 +33,8 @@ export class Autopilot {
   private readonly alpha: number;
   private readonly feather: boolean;
   private readonly kappa: number;
-  private readonly spans: Span[] = [{ x0: 0, x1: 0 }];
+  private readonly center: number;
+  private readonly spans: Span[] = Array.from({ length: 4 }, () => ({ x0: 0, x1: 0 }));
   /** Ring buffer of observed [theta, omega] for the reaction delay. */
   private readonly hist: Float64Array;
   private histPos = 0;
@@ -44,6 +46,7 @@ export class Autopilot {
     this.alpha = opts.alpha ?? 0.2;
     this.feather = opts.feather ?? true;
     this.kappa = opts.kappa ?? 0;
+    this.center = opts.center ?? 0.03;
     this.delayTicks = Math.round((opts.delay ?? 0) * 120);
     this.hist = new Float64Array((this.delayTicks + 1) * 2);
   }
@@ -67,7 +70,8 @@ export class Autopilot {
     // ---- Balance. y = horizontal offset of the cake top from the hands; keep the tray a bit
     // beyond it so gravity pulls the top back over the hands.
     // Feed-forward: lead with the tray against the walking acceleration (tray back to start).
-    const p = wt.tray + this.beta * (th + this.alpha * om) * c.L - this.kappa * wt.a;
+    const p =
+      wt.tray * (1 - this.center) + this.beta * (th + this.alpha * om) * c.L - this.kappa * wt.a;
     this.intent.trayTarget = Math.max(-1, Math.min(1, p / t.TRAY_REACH));
 
     // ---- Walking.
@@ -75,7 +79,7 @@ export class Autopilot {
     if (this.feather) {
       // Segway rule: stop pushing when the cake leans far back; speed up to catch a forward lean.
       if (walk && th < -12 * DEG) walk = false;
-      else if (!walk && th > 14 * DEG && w.waiter.x < LEVEL.TABLE.x0 - 40 && this.safe(w, true))
+      else if (!walk && th > 14 * DEG && w.waiter.x < w.level.TABLE.x0 - 40 && this.safe(w, true))
         walk = true;
     }
     this.intent.walk = walk;
@@ -88,23 +92,23 @@ export class Autopilot {
     const stopDist = (wt.v * wt.v) / (2 * t.STOP_DECEL * w.env.decelMult);
 
     // Table: stop in the middle of the zone.
-    const target = (LEVEL.TABLE.x0 + LEVEL.TABLE.x1) / 2;
-    if (wt.x > LEVEL.TABLE.x0 - 200) {
+    const table = w.level.TABLE;
+    const target = (table.x0 + table.x1) / 2;
+    if (wt.x > table.x0 - 200) {
       if (w.inTableZone && wt.v < 3) return false;
       return wt.x + stopDist + 3 < target;
     }
 
-    // Grandma: keep a polite distance.
+    // Blockers (grandma, the kraken): keep a polite distance.
     for (const o of w.obstacles) {
-      if (o instanceof Grandma && o.active) {
-        const gap = o.blockX(w) - wt.x;
-        if (gap < stopDist + 10) return false;
-      }
+      if (!o.queueX) continue;
+      const gap = o.queueX(w) - wt.x;
+      if (gap < stopDist + 10) return false;
     }
 
     // Don't come to a stop on the champagne.
-    const spill = w.obstacles.find((o) => o instanceof Spill) as Spill;
-    if (wt.x > spill.x0 - 5 && wt.x < spill.x1 + 5 && wt.v > 20) {
+    const spill = w.obstacles.find((o) => o instanceof Spill);
+    if (spill && wt.x > spill.x0 - 5 && wt.x < spill.x1 + 5 && wt.v > 20) {
       if (this.safe(w, true)) return true;
     }
 

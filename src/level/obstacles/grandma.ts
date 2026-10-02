@@ -43,6 +43,10 @@ export class Grandma implements Obstacle {
     return this.x - T.GRANDMA_HALF_W - w.t.WAITER_HALF_W - 1;
   }
 
+  queueX(w: World): number {
+    return this.active ? this.blockX(w) : Infinity;
+  }
+
   blockV(): number {
     return this.speed;
   }

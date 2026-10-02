@@ -140,6 +140,45 @@ body {
   text-shadow: calc(var(--px) * 1) calc(var(--px) * 1) 0 var(--shadow);
 }
 
+/* World picker: two tabs, the picked one lit up in gold. */
+.cw-worlds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--px) * 4);
+  justify-content: center;
+}
+
+#ui .cw-world {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--px) * 3);
+  font-size: calc(var(--px) * 6);
+  padding: calc(var(--px) * 2) calc(var(--px) * 5) calc(var(--px) * 2) calc(var(--px) * 3);
+  color: var(--ink);
+  background: rgba(26, 15, 31, 0.8);
+  border: calc(var(--px) * 1) solid rgba(255, 248, 236, 0.45);
+  box-shadow: 0 calc(var(--px) * 2) 0 var(--shadow);
+}
+
+#ui .cw-world.on {
+  color: var(--shadow);
+  background: var(--gold);
+  border-color: var(--shadow);
+  box-shadow:
+    0 calc(var(--px) * 2) 0 var(--pink-dark),
+    0 calc(var(--px) * 3) 0 var(--shadow);
+}
+
+.cw-wicon {
+  width: calc(var(--px) * 12);
+  height: calc(var(--px) * 12);
+  flex: none;
+}
+
+.cw-title[data-world='pirate'] .cw-logo span:last-child {
+  color: #6fd3ff;
+}
+
 .cw-buttons {
   display: flex;
   flex-wrap: wrap;

@@ -50,7 +50,12 @@ Both inputs act on the same horizontal axis: speeding up tips the cake **back**,
 Stop inside the glowing zone in front of the cake table, slow and upright, and hold still for
 half a second to set the cake down.
 
-## The level
+## Worlds
+
+Pick a world on the title screen (tap a tab, or `←` / `→` on a keyboard). The choice is
+remembered, and `?world=pirate` links straight to it.
+
+### Wedding Hall (the original)
 
 1. **Kitchen doors** - calm tutorial zone with floating hints.
 2. **Champagne spill** - slippery floor: stopping takes ~3x longer and you get random slips.
@@ -63,6 +68,25 @@ half a second to set the cake down.
 9. **Conga Line** - dancers cross the lane in sequence; each one that overlaps bumps you.
 10. **Cake Table** - stop, hold still, deliver.
 
+### Pirate Ship
+
+The same 60-second walk across two ships lashed together at sunset, to the captain's table.
+
+1. **Galley** - calm tutorial zone.
+2. **Rolling deck** - the ship rocks on the swell the whole way, nudging the cake one way, then
+   the other. Watch the horizon tilt.
+3. **Loose cannonballs** - roll from rail to rail with the swell. Running into one makes you hop.
+4. **Swinging rum barrel** - swings from a crane at cake height and clips the top tiers (a
+   shorter cake ducks under it).
+5. **Walk the plank** - a springy gangplank over shark water. Every step bounces it; cross slowly
+   or the bounces throw the cake about.
+6. **The captain's parrot** - perches on the top tier, flaps about, then flies off.
+7. **Kraken** - a tentacle bursts through the deck and blocks the way, then slams the deck as it
+   sinks. Wait at a respectful distance.
+8. **Rogue wave** - at about 20 s left the lookout rings 3-2-1 and a wave breaks over the rail,
+   leaving the deck slippery for a few seconds.
+9. **Captain's table** - stop, hold still, deliver.
+
 Every obstacle telegraphs itself about a second ahead with a `!` bubble or animation.
 
 ### Modes and seeds
@@ -73,7 +97,8 @@ Every obstacle telegraphs itself about a second ahead with a `!` bubble or anima
 
 The layout is fixed; the seed varies the uncle's rhythm, the Roomba's route, the toddler's
 delay, grandma's patience, the bass-drop direction, the bouquet's landing offset and the conga
-timing.
+timing. On the ship it varies the swell, where the cannonballs, barrel, plank and kraken sit,
+the barrel's swing, how long the parrot stays and when the wave breaks.
 
 ### Winning, losing, scoring
 
@@ -84,7 +109,7 @@ timing.
 - **Score** = tiers × 1000 + ⌊seconds left × 100⌋ + 250 per **CLUTCH** save (recovering from a
   lean past 30° without toppling).
 - **Grades:** S = 7 tiers and ≥ 15 s left, A = 6+, B = 5, C = 4, F = loss. Best score and grade
-  are stored per mode in `localStorage`.
+  are stored per mode and world in `localStorage`.
 - **Share** uses the Web Share API (with a PNG of the final frame when supported), otherwise it
   copies e.g. `🎂 CAKE WALK — Daily 2026-09-30 — Grade S — 7/7 tiers — 17.3s left — 3 clutch saves`.
 

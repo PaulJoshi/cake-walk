@@ -1,5 +1,6 @@
 import { T } from '../game/tuning';
 import type { Outcome } from '../game/World';
+import type { WorldId } from '../level/worlds';
 
 export type Grade = 'S' | 'A' | 'B' | 'C' | 'F';
 export type Mode = 'daily' | 'free';
@@ -12,6 +13,8 @@ export interface RoundResult {
   clutches: number;
   mode: Mode;
   seed: string;
+  /** Defaults to the classic wedding. */
+  world?: WorldId;
 }
 
 export interface Best {
@@ -27,6 +30,18 @@ export const FAIL_LINES: Record<
   cupcake: { title: 'CUPCAKE!', joke: "That's not a wedding cake. That's a cupcake." },
   timeout: { title: "TIME'S UP!", joke: 'The best man toasted an empty table.' },
 };
+
+/** The Pirate Ship has its own jokes. */
+export const PIRATE_FAIL_LINES: typeof FAIL_LINES = {
+  toppled: { title: 'OVERBOARD!', joke: 'The cake walked the plank.' },
+  cupcake: { title: 'CUPCAKE!', joke: "That's not a wedding cake. That's a ship's biscuit." },
+  timeout: { title: "TIME'S UP!", joke: 'The captain toasted an empty table. Arrr.' },
+};
+
+export function failLine(r: RoundResult): { title: string; joke: string } {
+  const lines = r.world === 'pirate' ? PIRATE_FAIL_LINES : FAIL_LINES;
+  return lines[r.outcome as keyof typeof FAIL_LINES];
+}
 
 export const WIN_LINES: Record<Exclude<Grade, 'F'>, string> = {
   S: 'Flawless. The photographer wept.',
@@ -64,6 +79,7 @@ export function shareText(r: RoundResult): string {
   const mode = r.mode === 'daily' ? `Daily Challenge ${r.seed}` : `Random #${r.seed}`;
   const g = grade(r);
   const parts = [`🎂 CAKE WALK`, mode, `Grade ${g}`];
+  if (r.world === 'pirate') parts.splice(1, 0, 'Pirate Ship');
   if (r.outcome === 'won') {
     parts.push(`${r.tiers}/${T.TIER_COUNT} tiers`, `${r.secondsLeft.toFixed(1)}s left`);
   } else {
@@ -88,11 +104,17 @@ function storage(): KV | null {
   }
 }
 
-const key = (mode: Mode) => `cakewalk:best:${mode}`;
+/** The wedding keeps its original keys so existing bests carry over. */
+const key = (mode: Mode, world: WorldId = 'wedding') =>
+  world === 'wedding' ? `cakewalk:best:${mode}` : `cakewalk:best:${world}:${mode}`;
 
-export function loadBest(mode: Mode, kv: KV | null = storage()): Best | null {
+export function loadBest(
+  mode: Mode,
+  kv: KV | null = storage(),
+  world: WorldId = 'wedding',
+): Best | null {
   try {
-    const raw = kv?.getItem(key(mode));
+    const raw = kv?.getItem(key(mode, world));
     if (!raw) return null;
     const b = JSON.parse(raw) as Best;
     return typeof b.score === 'number' && typeof b.grade === 'string' ? b : null;
@@ -105,14 +127,34 @@ export function loadBest(mode: Mode, kv: KV | null = storage()): Best | null {
 export function saveBest(r: RoundResult, kv: KV | null = storage()): boolean {
   const s = score(r);
   const g = grade(r);
-  const prev = loadBest(r.mode, kv);
+  const prev = loadBest(r.mode, kv, r.world);
   const better =
     !prev || s > prev.score || (s === prev.score && GRADE_RANK[g] > GRADE_RANK[prev.grade]);
   if (!better || (s === 0 && prev)) return false;
   try {
-    kv?.setItem(key(r.mode), JSON.stringify({ score: s, grade: g } satisfies Best));
+    kv?.setItem(key(r.mode, r.world), JSON.stringify({ score: s, grade: g } satisfies Best));
   } catch {
     return false;
   }
   return s > 0;
+}
+
+const WORLD_KEY = 'cakewalk:world';
+
+/** The world picked on the title screen last time. */
+export function loadWorld(kv: KV | null = storage()): WorldId | null {
+  try {
+    const v = kv?.getItem(WORLD_KEY);
+    return v === 'wedding' || v === 'pirate' ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveWorld(world: WorldId, kv: KV | null = storage()): void {
+  try {
+    kv?.setItem(WORLD_KEY, world);
+  } catch {
+    /* private mode */
+  }
 }
