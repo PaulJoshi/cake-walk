@@ -6,35 +6,106 @@
       name="viewport"
       content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#1a0f1f" />
+    <title>Cake Walk: 60 seconds to save the wedding | Free browser game</title>
     <meta
       name="description"
-      content="CAKE WALK - 60 seconds to save the wedding. Hold to walk. Move to balance."
+      content="Carry a 7-tier wedding cake through a chaotic reception before the toast. A free 60-second pixel-art balancing game with three worlds. Play in your browser."
     />
-    <meta property="og:title" content="CAKE WALK" />
+    <meta name="author" content="Paul Joshi" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link rel="canonical" href="https://cake-walk-two.vercel.app/" />
+    <meta name="theme-color" content="#1a0f1f" />
+    <meta name="color-scheme" content="dark" />
+
+    <!-- Link previews (WhatsApp, iMessage, Slack, Discord, Facebook, LinkedIn, X). URLs must be absolute. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Cake Walk" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:url" content="https://cake-walk-two.vercel.app/" />
+    <meta property="og:title" content="CAKE WALK - 60 seconds to save the wedding" />
     <meta
       property="og:description"
-      content="60 seconds to save the wedding. Hold to walk. Move to balance."
+      content="Hold to walk. Move to balance. Get a 7-tier cake across the room before the toast in this free pixel-art game. Wedding hall, pirate ship and space station."
     />
+    <meta property="og:image" content="https://cake-walk-two.vercel.app/og-image.png" />
+    <meta property="og:image:secure_url" content="https://cake-walk-two.vercel.app/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Cake Walk title screen: a pixel-art waiter carrying a tall wedding cake through a reception hall"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="CAKE WALK - 60 seconds to save the wedding" />
+    <meta
+      name="twitter:description"
+      content="Hold to walk. Move to balance. A free 60-second pixel-art cake balancing game you play in your browser."
+    />
+    <meta name="twitter:image" content="https://cake-walk-two.vercel.app/og-image.png" />
+    <meta
+      name="twitter:image:alt"
+      content="Cake Walk title screen: a pixel-art waiter carrying a tall wedding cake through a reception hall"
+    />
+
+    <!-- Icons and install. -->
+    <link rel="icon" href="/favicon.ico" sizes="32x32 48x48" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="application-name" content="Cake Walk" />
+    <meta name="apple-mobile-web-app-title" content="Cake Walk" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <link
-      rel="icon"
-      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'><rect x='3' y='10' width='10' height='4' fill='%23fff'/><rect x='4' y='6' width='8' height='4' fill='%23ffd6e6'/><rect x='5' y='3' width='6' height='3' fill='%23fff'/><rect x='3' y='13' width='10' height='1' fill='%23ff6fa8'/><rect x='4' y='9' width='8' height='1' fill='%23ff6fa8'/></svg>"
-    />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "VideoGame",
+        "name": "Cake Walk",
+        "alternateName": "CAKE WALK",
+        "url": "https://cake-walk-two.vercel.app/",
+        "image": "https://cake-walk-two.vercel.app/og-image.png",
+        "description": "Carry a 7-tier wedding cake through a chaotic reception before the toast. A free 60-second pixel-art balancing game with three worlds: a wedding hall, a pirate ship and a space station.",
+        "genre": ["Arcade", "Casual", "Balance"],
+        "gamePlatform": ["Web browser", "Mobile", "Desktop"],
+        "applicationCategory": "Game",
+        "operatingSystem": "Any",
+        "playMode": "SinglePlayer",
+        "inLanguage": "en",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "author": {
+          "@type": "Person",
+          "name": "Paul Joshi",
+          "url": "https://github.com/PaulJoshi"
+        },
+        "codeRepository": "https://github.com/PaulJoshi/cake-walk",
+        "license": "https://opensource.org/licenses/MIT"
+      }
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
       rel="stylesheet"
     />
-    <title>CAKE WALK - 60 seconds to save the wedding</title>
   </head>
   <body>
     <div id="app">
       <canvas id="game" aria-label="Cake Walk game canvas" role="img"></canvas>
       <div id="ui"></div>
     </div>
+    <noscript>
+      <h1>Cake Walk: 60 seconds to save the wedding</h1>
+      <p>
+        You are a nervous waiter carrying a 7-tier wedding cake from the kitchen to the cake table
+        across a chaotic reception. Hold to walk, move to balance, and get there before the best
+        man's toast. Play in a wedding hall, on a pirate ship or aboard a space station.
+      </p>
+      <p>Cake Walk needs JavaScript to run. Please enable it and reload the page.</p>
+    </noscript>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

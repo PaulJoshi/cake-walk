@@ -31,7 +31,7 @@ two inputs, a clear win or loss, and a cake that almost falls a lot but rarely a
 
 <!-- Record a GIF of a run (e.g. with ?bot=1) and save it as docs/gameplay.gif -->
 
-**Play:** see the live Vercel URL in the repository description.
+**Play:** <https://cake-walk-two.vercel.app>
 
 ## Controls
 
@@ -236,6 +236,15 @@ Or from the CLI:
 npx vercel@latest        # first run links the project
 npx vercel@latest --prod
 ```
+
+### Link previews and search
+
+`index.html` carries the Open Graph and Twitter tags that WhatsApp, iMessage, Slack, Discord and
+X read for link previews, plus a canonical URL and `VideoGame` structured data for search engines.
+`public/` holds the share image (`og-image.png`, 1200×630), icons, `site.webmanifest`,
+`robots.txt` and `sitemap.xml`. These use the absolute production URL
+`https://cake-walk-two.vercel.app`; if the domain changes, update it in `index.html`,
+`robots.txt` and `sitemap.xml`.
 
 ## License
 
