@@ -99,7 +99,6 @@ function cakes(n: number): string {
 /** DOM overlays for title, controls, pause, results and share. Plain buttons, keyboard friendly. */
 export class Overlays {
   private game: Game | null = null;
-  private muted = false;
   private readonly corner: HTMLElement;
   private readonly panel: HTMLElement;
   private readonly touch: HTMLElement;
@@ -369,7 +368,6 @@ export class Overlays {
         </div>
         <div class="cw-buttons small">
           <button data-action="controls">Controls</button>
-          <button data-action="mute">${this.muted ? 'Unmute' : 'Mute'}</button>
           <button data-action="fullscreen">Fullscreen</button>
           ${this.tiltButton()}
         </div>
@@ -553,14 +551,11 @@ export class Overlays {
   }
 
   setMuted(m: boolean): void {
-    this.muted = m;
     const b = this.corner.querySelector<HTMLButtonElement>('[data-action="mute"]');
     if (b) {
       b.classList.toggle('off', m);
       b.setAttribute('aria-pressed', String(m));
     }
-    const tb = this.panel.querySelector<HTMLButtonElement>('.cw-title [data-action="mute"]');
-    if (tb) tb.textContent = m ? 'Unmute' : 'Mute';
   }
 
   toggleFullscreen(): void {
