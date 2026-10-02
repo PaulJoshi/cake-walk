@@ -16,7 +16,13 @@ export type ObstacleKind =
   | 'plank'
   | 'parrot'
   | 'kraken'
-  | 'wave';
+  | 'wave'
+  | 'walkway'
+  | 'laser'
+  | 'gravity'
+  | 'teleporter'
+  | 'ufo'
+  | 'meteors';
 
 /** A horizontal interval in the waiter's lane, used for hitboxes and bot prediction. */
 export interface Span {

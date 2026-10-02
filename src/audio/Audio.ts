@@ -71,9 +71,36 @@ const SHANTY: [number, number][] = [
 ];
 const SHANTY_BASS = [50, 45, 50, 45, 48, 43, 48, 43, 50, 45, 50, 45, 48, 43, 50, 50];
 
+/** "The Blue Danube" (Strauss, 1866), the waltz of slow-docking spaceships. 0 = rest. 48 beats. */
+const WALTZ: [number, number][] = [];
+for (const [a, b, c, top, hi1, hi2] of [
+  [62, 62, 66, 69, 81, 78],
+  [62, 62, 66, 69, 81, 79],
+  [61, 61, 64, 71, 83, 79],
+  [61, 61, 64, 71, 83, 78],
+])
+  WALTZ.push(
+    [a, 1],
+    [b, 1],
+    [c, 1],
+    [top, 2],
+    [0, 1],
+    [hi1, 1],
+    [hi1, 1],
+    [0, 1],
+    [hi2, 1],
+    [hi2, 1],
+    [0, 1],
+  );
+const D = [50, 54, 57];
+const A7 = [45, 52, 55];
+/** Oom-pah-pah, one bar (3 beats) per chord. */
+const WALTZ_BASS = [D, D, D, D, D, D, A7, A7, A7, A7, A7, A7, A7, A7, A7, D].flat();
+
 const SONGS: Record<WorldId, { melody: [number, number][]; bass: number[] }> = {
   wedding: { melody: MELODY, bass: BASS },
   pirate: { melody: SHANTY, bass: SHANTY_BASS },
+  space: { melody: WALTZ, bass: WALTZ_BASS },
 };
 
 function loadMuted(): boolean {
@@ -409,6 +436,58 @@ export class Audio {
         this.thump(1);
         this.burst(this.now, 0.5, 0.3, 'lowpass', 1500, 120, 2);
         break;
+      case 'zap':
+        this.tone(1800, this.now, 0.25, 0.1, 'sawtooth', 120);
+        this.burst(this.now, 0.2, 0.15, 'highpass', 4000, 1500, 2);
+        break;
+      case 'gravity':
+        // Heavy: a sagging groan down. Light: a floaty whistle up.
+        if (e.mult > 1) this.tone(300, this.now, 0.5, 0.12, 'triangle', 90);
+        else if (e.mult < 1) this.tone(300, this.now, 0.6, 0.1, 'sine', 1200);
+        break;
+      case 'teleport':
+        for (let i = 0; i < 6; i++)
+          this.tone(midi(72 + i * 4), this.now + i * 0.035, 0.12, 0.08, 'square25');
+        this.burst(this.now, 0.3, 0.1, 'bandpass', 3000, 800, 4);
+        break;
+      case 'ufo': {
+        // The classic flying-saucer warble.
+        const c = this.ctx;
+        const o = c.createOscillator();
+        const lfo = c.createOscillator();
+        const lg = c.createGain();
+        const g = c.createGain();
+        const t = this.now;
+        o.type = 'sine';
+        o.frequency.value = 700;
+        lfo.frequency.value = 7;
+        lg.gain.value = 250;
+        lfo.connect(lg).connect(o.frequency);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.08, t + 0.2);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6);
+        o.connect(g).connect(this.sfx);
+        o.start(t);
+        lfo.start(t);
+        o.stop(t + 1.7);
+        lfo.stop(t + 1.7);
+        break;
+      }
+      case 'alarm':
+        this.tone(880, this.now, 0.25, 0.12, 'square25', 660);
+        this.tone(880, this.now + 0.3, 0.25, 0.1, 'square25', 660);
+        break;
+      case 'meteor':
+        this.thump(0.8);
+        this.burst(this.now, 0.7, 0.3, 'lowpass', 2500, 80, 1);
+        break;
+      case 'breach':
+        this.burst(this.now, T.BREACH_TIME, 0.35, 'bandpass', 600, 3000, 0.8);
+        break;
+      case 'shutters':
+        this.thump(0.6);
+        this.tone(220, this.now, 0.15, 0.12, 'square25', 110);
+        break;
       default:
         break;
     }
@@ -468,22 +547,23 @@ export class Audio {
     while (this.nextNote < t + 0.2) {
       const [note, beats] = this.song.melody[this.melodyIdx];
       const dur = beats * spb;
-      this.tone(
-        midi(note),
-        this.nextNote,
-        Math.max(0.08, dur * 0.9),
-        0.07,
-        'square25',
-        undefined,
-        this.music,
-      );
+      if (note > 0)
+        this.tone(
+          midi(note),
+          this.nextNote,
+          Math.max(0.08, dur * 0.9),
+          0.07,
+          'square25',
+          undefined,
+          this.music,
+        );
       // Bass + hats on every beat and off-beat that falls inside this note.
       for (let b = 0; b < beats; b += 0.5) {
         const tb = this.nextNote + b * spb;
         const whole = Math.round((this.beat + b) * 2) / 2;
         if (Number.isInteger(whole)) {
           this.tone(
-            midi(this.song.bass[whole % 16]),
+            midi(this.song.bass[whole % this.song.bass.length]),
             tb,
             spb * 0.8,
             0.13,
@@ -494,7 +574,7 @@ export class Audio {
           if (whole % 2 === 0) this.tone(70, tb, 0.08, 0.12, 'sine', 40, this.music);
         } else this.burst(tb, 0.04, 0.03, 'highpass', 7000, undefined, 1, this.music);
       }
-      this.beat = (this.beat + beats) % 16;
+      this.beat = (this.beat + beats) % this.song.bass.length;
       this.nextNote += dur;
       this.melodyIdx = (this.melodyIdx + 1) % this.song.melody.length;
     }

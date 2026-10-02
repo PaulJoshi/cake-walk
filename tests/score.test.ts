@@ -73,6 +73,11 @@ describe('share text', () => {
       '🎂 CAKE WALK — Pirate Ship — Daily Challenge 2026-09-30 — Grade S — 7/7 tiers — 17.3s left',
     );
   });
+  it('names the space station', () => {
+    expect(shareText(r({ world: 'space', clutches: 0 }))).toBe(
+      '🎂 CAKE WALK — Space Station — Daily Challenge 2026-09-30 — Grade S — 7/7 tiers — 17.3s left',
+    );
+  });
 });
 
 describe('best scores', () => {
@@ -98,6 +103,8 @@ describe('best scores', () => {
     expect(loadWorld(kv)).toBeNull();
     saveWorld('pirate', kv);
     expect(loadWorld(kv)).toBe('pirate');
+    saveWorld('space', kv);
+    expect(loadWorld(kv)).toBe('space');
   });
   it('survives broken storage', () => {
     const bad: KV = {

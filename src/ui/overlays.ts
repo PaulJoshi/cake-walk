@@ -30,12 +30,30 @@ type Action =
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
-/** Tiny pixel-art icons for the world picker (inline SVG, crisp at any scale). */
+/** 16x16 pixel-art scenes for the world picker squares (inline SVG, crisp at any scale). */
 const WORLD_ICONS: Record<WorldId, string> = {
   wedding:
-    '<rect x="5" y="2" width="6" height="3" fill="#fffaf2"/><rect x="4" y="5" width="8" height="3" fill="#ffd6e6"/><rect x="3" y="8" width="10" height="4" fill="#fffaf2"/><rect x="3" y="11" width="10" height="1" fill="#ff6fa8"/><rect x="4" y="7" width="8" height="1" fill="#ff6fa8"/><rect x="2" y="12" width="12" height="2" fill="#8f96a3"/><rect x="7" y="0" width="2" height="2" fill="#ff4f7b"/>',
+    '<rect width="16" height="16" fill="#5a2350"/><rect y="13" width="16" height="3" fill="#3b1636"/>' +
+    '<rect x="2" y="2" width="1" height="1" fill="#ffd36b"/><rect x="13" y="3" width="1" height="1" fill="#ffd36b"/><rect x="12" y="1" width="1" height="1" fill="#fff8ec"/><rect x="1" y="7" width="1" height="1" fill="#fff8ec"/>' +
+    '<rect x="7" y="2" width="2" height="2" fill="#ff4f7b"/>' +
+    '<rect x="6" y="4" width="4" height="2" fill="#fffaf2"/><rect x="6" y="5" width="4" height="1" fill="#ff8fb8"/>' +
+    '<rect x="5" y="6" width="6" height="3" fill="#fffaf2"/><rect x="5" y="8" width="6" height="1" fill="#ff8fb8"/>' +
+    '<rect x="4" y="9" width="8" height="3" fill="#fffaf2"/><rect x="4" y="11" width="8" height="1" fill="#ff8fb8"/>' +
+    '<rect x="2" y="12" width="12" height="1" fill="#e3e7ee"/><rect x="2" y="13" width="12" height="1" fill="#8f96a3"/>',
   pirate:
-    '<rect x="7" y="0" width="1" height="11" fill="#5b311f"/><rect x="8" y="1" width="6" height="5" fill="#141018"/><rect x="10" y="2" width="2" height="2" fill="#fffaf2"/><rect x="10" y="4" width="2" height="1" fill="#ff4f7b"/><rect x="2" y="5" width="5" height="5" fill="#f3e6c8"/><rect x="1" y="11" width="14" height="2" fill="#8f5a36"/><rect x="3" y="13" width="10" height="1" fill="#5b311f"/><rect x="0" y="14" width="16" height="2" fill="#2e7fd6"/>',
+    '<rect width="16" height="16" fill="#2c1a55"/><rect y="4" width="16" height="3" fill="#9a2f6c"/><rect y="7" width="16" height="2" fill="#ec6a5e"/><rect y="9" width="16" height="1" fill="#ffc35c"/>' +
+    '<rect x="11" y="7" width="4" height="3" fill="#ffd36b"/><rect x="12" y="6" width="2" height="1" fill="#ffd36b"/>' +
+    '<rect y="10" width="16" height="6" fill="#1f3f6a"/><rect x="1" y="13" width="3" height="1" fill="#3a6a9a"/><rect x="11" y="14" width="3" height="1" fill="#3a6a9a"/>' +
+    '<rect x="7" y="1" width="1" height="9" fill="#41210f"/><rect x="8" y="1" width="3" height="2" fill="#141018"/><rect x="9" y="1" width="1" height="1" fill="#fffaf2"/>' +
+    '<rect x="3" y="3" width="4" height="5" fill="#f3e6c8"/><rect x="4" y="4" width="2" height="1" fill="#c94040"/>' +
+    '<rect x="1" y="9" width="13" height="2" fill="#5b311f"/><rect x="2" y="11" width="11" height="1" fill="#41210f"/><rect x="1" y="9" width="13" height="1" fill="#8f5a36"/>',
+  space:
+    '<rect width="16" height="16" fill="#0d0b24"/>' +
+    '<rect x="2" y="2" width="1" height="1" fill="#fff7d6"/><rect x="13" y="1" width="1" height="1" fill="#fff7d6"/><rect x="4" y="13" width="1" height="1" fill="#fff7d6"/><rect x="14" y="14" width="1" height="1" fill="#b98cff"/><rect x="1" y="9" width="1" height="1" fill="#6fd3ff"/>' +
+    '<rect x="9" y="5" width="4" height="1" fill="#6fd3ff"/><rect x="8" y="6" width="6" height="1" fill="#6fd3ff"/><rect x="7" y="7" width="8" height="4" fill="#6fd3ff"/><rect x="8" y="11" width="6" height="1" fill="#6fd3ff"/><rect x="9" y="12" width="4" height="1" fill="#6fd3ff"/>' +
+    '<rect x="12" y="6" width="2" height="1" fill="#2e7fd6"/><rect x="13" y="7" width="2" height="4" fill="#2e7fd6"/><rect x="12" y="11" width="2" height="1" fill="#2e7fd6"/><rect x="9" y="7" width="2" height="1" fill="#e6f8ff"/>' +
+    '<rect x="4" y="10" width="14" height="1" fill="#ffd36b"/><rect x="3" y="11" width="3" height="1" fill="#ffd36b"/>' +
+    '<rect x="2" y="4" width="3" height="1" fill="#6be38a"/><rect x="1" y="5" width="5" height="1" fill="#c9ced8"/><rect x="2" y="6" width="1" height="1" fill="#ffd36b"/><rect x="4" y="6" width="1" height="1" fill="#ffd36b"/>',
 };
 
 function worldIcon(id: WorldId): string {
@@ -224,12 +242,13 @@ export class Overlays {
     return b ? `${b.grade} · ${b.score}` : '—';
   }
 
-  /** Two side-by-side world tabs; the picked one is highlighted. */
+  /** One square picture button per world; the picked one is lifted and framed in gold. */
   private worldPicker(): string {
     const current = this.game?.worldId ?? 'wedding';
     const tabs = WORLD_IDS.map((id) => {
       const on = id === current;
-      return `<button class="cw-world${on ? ' on' : ''}" data-action="world" data-world="${id}" role="radio" aria-checked="${on}">${worldIcon(id)}<span>${WORLDS[id].name}</span></button>`;
+      const name = WORLDS[id].name;
+      return `<button class="cw-world${on ? ' on' : ''}" data-action="world" data-world="${id}" role="radio" aria-checked="${on}" aria-label="${name}" title="${name}">${worldIcon(id)}</button>`;
     }).join('');
     return `<div class="cw-worlds" role="radiogroup" aria-label="World">${tabs}</div>`;
   }
@@ -244,7 +263,6 @@ export class Overlays {
         <div class="cw-tag">Night Out with Devin / Game Jam</div>
         <h1 class="cw-logo" aria-label="Cake Walk"><span>CAKE</span><span>WALK</span></h1>
         <p class="cw-sub">${world.tagline}</p>
-        ${this.worldPicker()}
         <div class="cw-buttons">
           <button data-action="daily" data-primary>Daily Challenge</button>
           <button data-action="free">Random</button>
@@ -255,6 +273,7 @@ export class Overlays {
           <button data-action="fullscreen">Fullscreen</button>
           ${this.tiltButton()}
         </div>
+        ${this.worldPicker()}
         <p class="cw-best">Daily best ${this.bestLine('daily')} &nbsp; Random best ${this.bestLine('free')}</p>
         <p class="cw-hint">${touch ? 'Tap anywhere to start' : 'Press any key to start · ← → change world'}</p>
       </div>`,
@@ -347,7 +366,7 @@ export class Overlays {
     const fail = !won ? failLine(r) : null;
     const best = loadBest(r.mode, undefined, r.world);
     const other = g.mode === 'daily' ? 'Random' : 'Daily Challenge';
-    const where = r.world === 'pirate' ? `${WORLDS.pirate.name} · ` : '';
+    const where = r.world && r.world !== 'wedding' ? `${WORLDS[r.world].name} · ` : '';
     this.open(
       'result',
       `<div class="cw-card cw-result ${won ? 'win' : 'lose'}">

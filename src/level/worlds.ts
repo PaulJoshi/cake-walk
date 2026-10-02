@@ -1,10 +1,11 @@
 import type { Rng } from '../game/rng';
 import { LEVEL, ZONES } from './level';
-import { buildObstacles, buildShipObstacles } from './obstacles';
+import { buildObstacles, buildShipObstacles, buildStationObstacles } from './obstacles';
 import type { Obstacle } from './obstacles/types';
 import { SHIP, SHIP_ZONES } from './ship';
+import { STATION, STATION_ZONES } from './station';
 
-export type WorldId = 'wedding' | 'pirate';
+export type WorldId = 'wedding' | 'pirate' | 'space';
 
 /** The parts of a level layout that the world, bot, camera and HUD share. */
 export interface Layout {
@@ -48,10 +49,19 @@ export const WORLDS: Record<WorldId, WorldDef> = {
     zones: SHIP_ZONES,
     build: buildShipObstacles,
   },
+  space: {
+    id: 'space',
+    name: 'Space Station',
+    tagline: '60 seconds to save the space wedding',
+    tableHint: 'STOP AT THE OBSERVATION DECK',
+    layout: STATION,
+    zones: STATION_ZONES,
+    build: buildStationObstacles,
+  },
 };
 
 /** Worlds in picker order. The classic wedding comes first. */
-export const WORLD_IDS: readonly WorldId[] = ['wedding', 'pirate'];
+export const WORLD_IDS: readonly WorldId[] = ['wedding', 'pirate', 'space'];
 
 export function isWorldId(s: unknown): s is WorldId {
   return typeof s === 'string' && (WORLD_IDS as readonly string[]).includes(s);

@@ -38,7 +38,15 @@ export type GameEvent =
   | { type: 'squawk' }
   | { type: 'flap' }
   | { type: 'tentacle' }
-  | { type: 'slam'; x: number };
+  | { type: 'slam'; x: number }
+  | { type: 'zap'; x: number }
+  | { type: 'gravity'; mult: number }
+  | { type: 'teleport'; from: number; to: number }
+  | { type: 'ufo' }
+  | { type: 'alarm'; n: number }
+  | { type: 'meteor'; dir: number }
+  | { type: 'breach'; x: number }
+  | { type: 'shutters' };
 
 /**
  * One round of CAKE WALK: waiter + cake + obstacles + timer + outcome. Completely headless
@@ -60,6 +68,9 @@ export class World {
   floorAUp = 0;
   /** How far the floor under the waiter is pushed down (px), e.g. by the gangplank. */
   sink = 0;
+  /** Speed the floor carries the waiter forward this tick (px/s), e.g. a moving walkway. */
+  floorV = 0;
+  private prevFloorV = 0;
 
   /** Simulated seconds since the round started. */
   time = 0;
@@ -144,6 +155,7 @@ export class World {
     this.env.blockV = 0;
     this.floorAUp = 0;
     this.sink = 0;
+    this.floorV = 0;
     for (const o of this.obstacles) {
       o.update(this, dt);
       if (o.blockX) {
@@ -158,13 +170,18 @@ export class World {
     const strideBefore = Math.floor(w.stride / 18);
     stepWaiter(t, w, intent, this.env, dt);
     if (Math.floor(w.stride / 18) !== strideBefore) this.events.push({ type: 'step', speed: w.v });
+    // A moving floor carries the waiter along (never through a blocker) and its speed changes
+    // jolt the tray like walking does.
+    if (this.floorV > 0) w.x = Math.max(w.x, Math.min(w.x + this.floorV * dt, this.env.blockX));
+    const aFloor = (this.floorV - this.prevFloorV) / dt;
+    this.prevFloorV = this.floorV;
     const moving = w.v > 20;
     if (this.wasMoving && w.v < 5) this.events.push({ type: 'dust', x: w.x });
     if (moving) this.wasMoving = true;
     else if (w.v < 5) this.wasMoving = false;
 
     const before = c.count;
-    const fell = stepCake(t, c, w.aTray, w.aUp + this.floorAUp, dt);
+    const fell = stepCake(t, c, w.aTray + aFloor * t.ARM_COUPLING, w.aUp + this.floorAUp, dt);
     if (fell >= 0) this.events.push({ type: 'tierLost', from: fell, to: before, theta: c.theta });
 
     const lean = Math.abs(c.theta);

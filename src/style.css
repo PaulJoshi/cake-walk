@@ -140,43 +140,57 @@ body {
   text-shadow: calc(var(--px) * 1) calc(var(--px) * 1) 0 var(--shadow);
 }
 
-/* World picker: two tabs, the picked one lit up in gold. */
+/* World picker: a row of square pictures below the buttons, the picked one framed in gold. */
 .cw-worlds {
   display: flex;
-  flex-wrap: wrap;
-  gap: calc(var(--px) * 4);
+  gap: calc(var(--px) * 6);
   justify-content: center;
+  margin-top: calc(var(--px) * 6);
 }
 
 #ui .cw-world {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--px) * 3);
-  font-size: calc(var(--px) * 6);
-  padding: calc(var(--px) * 2) calc(var(--px) * 5) calc(var(--px) * 2) calc(var(--px) * 3);
-  color: var(--ink);
-  background: rgba(26, 15, 31, 0.8);
-  border: calc(var(--px) * 1) solid rgba(255, 248, 236, 0.45);
+  width: calc(var(--px) * 28);
+  height: calc(var(--px) * 28);
+  padding: 0;
+  background: var(--shadow);
+  border: calc(var(--px) * 2) solid rgba(255, 248, 236, 0.35);
   box-shadow: 0 calc(var(--px) * 2) 0 var(--shadow);
+  opacity: 0.7;
+  filter: saturate(0.6);
+  transition:
+    transform 0.12s,
+    opacity 0.12s;
+}
+
+#ui .cw-world:hover,
+#ui .cw-world:focus-visible {
+  opacity: 1;
+  filter: none;
 }
 
 #ui .cw-world.on {
-  color: var(--shadow);
-  background: var(--gold);
-  border-color: var(--shadow);
+  opacity: 1;
+  filter: none;
+  border-color: var(--gold);
+  transform: translateY(calc(var(--px) * -2));
   box-shadow:
-    0 calc(var(--px) * 2) 0 var(--pink-dark),
-    0 calc(var(--px) * 3) 0 var(--shadow);
+    0 0 0 calc(var(--px) * 1) var(--shadow),
+    0 calc(var(--px) * 3) 0 var(--pink-dark),
+    0 calc(var(--px) * 4) 0 var(--shadow);
 }
 
 .cw-wicon {
-  width: calc(var(--px) * 12);
-  height: calc(var(--px) * 12);
-  flex: none;
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .cw-title[data-world='pirate'] .cw-logo span:last-child {
   color: #6fd3ff;
+}
+
+.cw-title[data-world='space'] .cw-logo span:last-child {
+  color: #6be38a;
 }
 
 .cw-buttons {
