@@ -1,6 +1,7 @@
 import type { Game } from '../game/Game';
 import { T } from '../game/tuning';
 import { WORLDS, WORLD_IDS, isWorldId, type WorldId } from '../level/worlds';
+import { ACHIEVEMENTS, type Achievement } from '../score/achievements';
 import type { Board, BoardEntry, Ranks } from '../score/board';
 import { challengePath, challengeRound } from '../score/challenge';
 import { isoWeek } from '../score/formula';
@@ -36,6 +37,7 @@ type Action =
   | 'boardWeek'
   | 'boardAll'
   | 'editName'
+  | 'badges'
   | 'accept'
   | 'decline';
 
@@ -73,6 +75,16 @@ const TROPHY =
   '<rect x="1" y="0" width="6" height="3"/><rect x="0" y="1" width="1" height="1"/><rect x="7" y="1" width="1" height="1"/>' +
   '<rect x="2" y="3" width="4" height="1"/><rect x="3" y="4" width="2" height="2"/><rect x="2" y="6" width="4" height="2"/></g></svg>';
 
+/** A tiny pixel medal for badges (earned ones in gold, the rest dimmed). */
+function medal(on = true): string {
+  return (
+    `<svg class="cw-medal${on ? '' : ' off'}" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">` +
+    '<g fill="#ff6fa8"><rect x="1" y="0" width="2" height="3"/><rect x="5" y="0" width="2" height="3"/></g>' +
+    '<g fill="currentColor"><rect x="2" y="3" width="4" height="5"/><rect x="1" y="4" width="6" height="3"/></g>' +
+    '<rect x="3" y="4" width="1" height="1" fill="#fff8ec"/></svg>'
+  );
+}
+
 const PART_LABELS: Record<string, string> = {
   distance: 'Distance',
   cargo: 'Cargo',
@@ -107,6 +119,8 @@ export class Overlays {
   private readonly panel: HTMLElement;
   private readonly touch: HTMLElement;
   private readonly toast: HTMLElement;
+  private readonly badgeToast: HTMLElement;
+  private badgeTimers: number[] = [];
   private result: RoundResult | null = null;
   /** The world button that was just pressed. */
   private pickedWorld = '';
@@ -132,11 +146,13 @@ export class Overlays {
         <button class="cw-icon" data-action="mute" aria-label="Mute (M)" title="Mute (M)">♪</button>
         <button class="cw-icon" data-action="fullscreen" aria-label="Fullscreen (F)" title="Fullscreen (F)">⛶</button>
       </div>
-      <div class="cw-toast" role="status" aria-live="polite"></div>`;
+      <div class="cw-toast" role="status" aria-live="polite"></div>
+      <div class="cw-badge-toast" role="status" aria-live="polite"></div>`;
     this.panel = root.querySelector('.cw-panel')!;
     this.corner = root.querySelector('.cw-corner')!;
     this.touch = root.querySelector('.cw-touch')!;
     this.toast = root.querySelector('.cw-toast')!;
+    this.badgeToast = root.querySelector('.cw-badge-toast')!;
     root.addEventListener('click', (e) => {
       const el = (e.target as HTMLElement).closest<HTMLElement>('[data-action]');
       let a: Action | null = null;
@@ -259,6 +275,9 @@ export class Overlays {
         this.editingName = true;
         this.fillBoardFoot();
         break;
+      case 'badges':
+        this.showBadges();
+        break;
     }
   }
 
@@ -316,6 +335,8 @@ export class Overlays {
     this.panel.dataset.screen = '';
     this.panel.innerHTML = '';
     this.corner.classList.remove('no-pause');
+    // A badge toast never carries on into the next round.
+    this.hideBadgeToast();
   }
 
   private bestText(world: WorldId): string {
@@ -329,13 +350,19 @@ export class Overlays {
     return top ? `Top ${fmtScore(top.score)}` : 'Scoreboard';
   }
 
-  /** Personal best plus a quiet link to the scoreboard (hidden when there isn't one). */
+  private badgeCount(): string {
+    const got = ACHIEVEMENTS.filter((a) => this.game?.profile.hasBadge(a.id)).length;
+    return `${got}/${ACHIEVEMENTS.length}`;
+  }
+
+  /** Personal best plus quiet links to the scoreboard (hidden when there isn't one) and badges. */
   private bestLine(): string {
     const world = this.game?.worldId ?? 'wedding';
     const hide = this.game?.scoreboard.available === false ? ' hidden' : '';
     return `<div class="cw-best">
       <span>Best <b class="cw-pb">${this.bestText(world)}</b></span>
       <button class="cw-link cw-toplink" data-action="scores" title="Scoreboard"${hide}>${TROPHY}<span class="cw-top">${this.topText(world)}</span></button>
+      <button class="cw-link" data-action="badges" title="Badges" aria-label="Badges">${medal()}<span class="cw-badge-n">${this.badgeCount()}</span></button>
     </div>`;
   }
 
@@ -346,6 +373,8 @@ export class Overlays {
     const world = g.worldId;
     const pb = this.panel.querySelector('.cw-pb');
     if (pb) pb.textContent = this.bestText(world);
+    const bn = this.panel.querySelector('.cw-badge-n');
+    if (bn) bn.textContent = this.badgeCount();
     void g.scoreboard.load(world).then(() => {
       if (this.screen !== 'title' || g.worldId !== world) return;
       const link = this.panel.querySelector<HTMLElement>('.cw-toplink');
@@ -540,6 +569,61 @@ export class Overlays {
     }
   }
 
+  private badgeItem(a: Achievement): string {
+    const on = !!this.game?.profile.hasBadge(a.id);
+    return `<li class="${on ? 'on' : 'off'}">${medal(on)}<span><b>${esc(a.name)}</b><small>${esc(a.desc)}</small></span><span class="cw-sr">${on ? 'earned' : 'not earned yet'}</span></li>`;
+  }
+
+  /** Every badge, earned ones in gold: the game-wide ones first, then each world's. */
+  private showBadges(): void {
+    const groups = [
+      { title: 'Any world', icon: '', list: ACHIEVEMENTS.filter((a) => !a.world) },
+      ...WORLD_IDS.map((id) => ({
+        title: WORLDS[id].name,
+        icon: worldIcon(id),
+        list: ACHIEVEMENTS.filter((a) => a.world === id),
+      })),
+    ];
+    const body = groups
+      .map(
+        (g) =>
+          `<h3>${g.icon}${g.title}</h3><ul class="cw-badges">${g.list.map((a) => this.badgeItem(a)).join('')}</ul>`,
+      )
+      .join('');
+    this.open(
+      'badges',
+      `<div class="cw-card cw-badgecard">
+        <button class="cw-close" data-action="back" aria-label="Close" title="Close">✕</button>
+        <h2>BADGES</h2>
+        <p class="cw-small">${this.badgeCount()} earned</p>
+        <div class="cw-badge-body">${body}</div>
+        <div class="cw-buttons"><button data-action="back" data-primary>Back</button></div>
+      </div>`,
+    );
+  }
+
+  private hideBadgeToast(): void {
+    for (const t of this.badgeTimers) window.clearTimeout(t);
+    this.badgeTimers = [];
+    this.badgeToast.classList.remove('show');
+  }
+
+  /** A quiet note about new badges, a moment after the result card lands. */
+  private showBadgeToast(badges: Achievement[]): void {
+    this.hideBadgeToast();
+    if (!badges.length) return;
+    const names = badges.slice(0, 2).map((a) => esc(a.name));
+    if (badges.length > 2) names.push(`+${badges.length - 2} more`);
+    const head = badges.length === 1 ? 'BADGE UNLOCKED' : `${badges.length} BADGES UNLOCKED`;
+    this.badgeTimers.push(
+      window.setTimeout(() => {
+        this.badgeToast.innerHTML = `${medal()}<span><small>${head}</small>${names.join(' · ')}</span>`;
+        this.badgeToast.classList.add('show');
+      }, 900),
+      window.setTimeout(() => this.badgeToast.classList.remove('show'), 900 + 4200),
+    );
+  }
+
   private showControls(): void {
     this.open(
       'controls',
@@ -616,7 +700,13 @@ export class Overlays {
     window.setTimeout(() => this.toast.classList.remove('show'), 1800);
   }
 
-  showResult(g: Game, r: RoundResult, isNewBest: boolean, snapshot: HTMLCanvasElement): void {
+  showResult(
+    g: Game,
+    r: RoundResult,
+    isNewBest: boolean,
+    snapshot: HTMLCanvasElement,
+    badges: Achievement[] = [],
+  ): void {
     this.result = r;
     this.snapshot = snapshot;
     this.snapshotPng = null;
@@ -666,6 +756,7 @@ export class Overlays {
         </div>
       </div>`,
     );
+    this.showBadgeToast(badges);
   }
 
   /** During a challenge: how this try compares with the friend's score. */
