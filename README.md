@@ -2,7 +2,7 @@
 
 > **60 seconds to save the wedding.** Hold to walk. Move to balance.
 
-<p align="center"><img src="docs/title-screen.png" alt="Cake Walk title screen: pixel-art wedding reception with the CAKE WALK logo, the menu buttons and three square world pictures (wedding cake, pirate ship, space station)" width="720"/></p>
+<p align="center"><img src="docs/gameplay.gif" alt="Cake Walk gameplay: the title screen, then the waiter balancing a 7-tier cake through the Wedding Hall, the Pirate Ship and the Space Station, where it lands on the table for CAKE DELIVERED" width="720"/></p>
 
 ```text
      ___________
@@ -26,10 +26,6 @@ by then, or if it falls, the wedding is ruined.
 
 Made for the **"60 Seconds to Save It"** game jam (Night Out with Devin): one minute, one level,
 two inputs, a clear win or loss, and a cake that almost falls a lot but rarely actually does.
-
-![Gameplay GIF placeholder](docs/gameplay.gif)
-
-<!-- Record a GIF of a run (e.g. with ?bot=1) and save it as docs/gameplay.gif -->
 
 **Play:** <https://cake-walk-two.vercel.app>
 
