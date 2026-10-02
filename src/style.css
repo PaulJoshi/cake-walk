@@ -428,6 +428,43 @@ body {
   display: none;
 }
 
+/* Source link: small and faint in the bottom-left corner, clear of the safe area. */
+.cw-gh {
+  position: absolute;
+  left: calc(env(safe-area-inset-left, 0px) + var(--px) * 4);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--px) * 4);
+  display: block;
+  width: max(28px, calc(var(--px) * 10));
+  height: max(28px, calc(var(--px) * 10));
+  padding: max(4px, calc(var(--px) * 1.5));
+  color: var(--ink);
+  opacity: 0.45;
+  transition: opacity 0.15s;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* Paused: sit above the HUD's progress bar, which reaches the left edge on narrow screens. */
+.cw-panel[data-screen='pause'] .cw-gh {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--px) * 16);
+}
+
+.cw-gh:hover,
+.cw-gh:focus-visible {
+  opacity: 0.9;
+}
+
+.cw-gh:focus-visible {
+  outline: calc(var(--px) * 1.5) solid var(--gold);
+  outline-offset: calc(var(--px) * 0.5);
+}
+
+.cw-gh svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 #ui .cw-icon.off {
   text-decoration: line-through;
   opacity: 0.45;
