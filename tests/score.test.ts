@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  fmtScore,
   grade,
-  loadBest,
   loadWorld,
-  saveBest,
   saveWorld,
   score,
   shareText,
@@ -17,6 +16,12 @@ const base: RoundResult = {
   tiers: 7,
   secondsLeft: 17.3,
   clutches: 3,
+  progress: 1,
+  cargo: 7,
+  leanAvg: 0.05,
+  hits: 2,
+  hitPower: 0.8,
+  slips: 1,
   mode: 'daily',
   seed: '2026-09-30',
 };
@@ -45,59 +50,41 @@ describe('grades', () => {
 });
 
 describe('score', () => {
-  it('tiers x 1000 + floor(seconds x 100) + 250 per clutch', () => {
-    expect(score(base)).toBe(7000 + 1730 + 750);
-    expect(score(r({ tiers: 4, secondsLeft: 0.019, clutches: 0 }))).toBe(4001);
-  });
-  it('losses score 0', () => {
-    expect(score(r({ outcome: 'toppled' }))).toBe(0);
+  it('scores every try, wins well above losses', () => {
+    const won = score(base);
+    const toppled = score(r({ outcome: 'toppled', progress: 0.8, cargo: 5.6, secondsLeft: 20 }));
+    const early = score(r({ outcome: 'toppled', progress: 0.05, cargo: 0.35, secondsLeft: 57 }));
+    expect(early).toBeGreaterThan(0);
+    expect(toppled).toBeGreaterThan(early);
+    expect(won).toBeGreaterThan(toppled);
   });
 });
 
 describe('share text', () => {
-  it('matches the spec example', () => {
+  const pts = fmtScore(score(base));
+  it('leads with the score', () => {
     expect(shareText(base)).toBe(
-      '🎂 CAKE WALK — Daily Challenge 2026-09-30 — Grade S — 7/7 tiers — 17.3s left — 3 clutch saves',
+      `🎂 CAKE WALK — Daily Challenge 2026-09-30 — ${pts} pts — Grade S — 7/7 tiers — 17.3s left — 3 clutch saves`,
     );
   });
   it('singular clutch, no clutch, random and losses', () => {
     expect(shareText(r({ clutches: 1 }))).toMatch(/— 1 clutch save$/);
     expect(shareText(r({ clutches: 0 }))).toMatch(/17\.3s left$/);
     expect(shareText(r({ mode: 'free', seed: 'ABC' }))).toContain('Random #ABC');
-    expect(shareText(r({ outcome: 'toppled', clutches: 0 }))).toBe(
-      '🎂 CAKE WALK — Daily Challenge 2026-09-30 — Grade F — cake toppled',
+    const lost = r({ outcome: 'toppled', clutches: 0, progress: 0.42 });
+    expect(shareText(lost)).toBe(
+      `🎂 CAKE WALK — Daily Challenge 2026-09-30 — ${fmtScore(score(lost))} pts — Grade F — cake toppled — 42% of the way`,
     );
   });
-  it('names the pirate ship', () => {
-    expect(shareText(r({ world: 'pirate', clutches: 0 }))).toBe(
-      '🎂 CAKE WALK — Pirate Ship — Daily Challenge 2026-09-30 — Grade S — 7/7 tiers — 17.3s left',
+  it('names the world', () => {
+    expect(shareText(r({ world: 'pirate', clutches: 0 }))).toMatch(
+      /^🎂 CAKE WALK — Pirate Ship — Daily Challenge 2026-09-30 — [\d,]+ pts — Grade S/,
     );
-  });
-  it('names the space station', () => {
-    expect(shareText(r({ world: 'space', clutches: 0 }))).toBe(
-      '🎂 CAKE WALK — Space Station — Daily Challenge 2026-09-30 — Grade S — 7/7 tiers — 17.3s left',
-    );
+    expect(shareText(r({ world: 'space' }))).toContain('— Space Station —');
   });
 });
 
-describe('best scores', () => {
-  it('stores per mode and reports new bests', () => {
-    const kv = memory();
-    expect(loadBest('daily', kv)).toBeNull();
-    expect(saveBest(r({ tiers: 5 }), kv)).toBe(true);
-    expect(saveBest(r({ tiers: 4 }), kv)).toBe(false);
-    expect(saveBest(base, kv)).toBe(true);
-    expect(loadBest('daily', kv)?.grade).toBe('S');
-    expect(loadBest('free', kv)).toBeNull();
-  });
-  it('keeps the pirate ship bests apart from the wedding', () => {
-    const kv = memory();
-    expect(saveBest(r({ world: 'pirate' }), kv)).toBe(true);
-    expect(loadBest('daily', kv)).toBeNull();
-    expect(loadBest('daily', kv, 'pirate')?.grade).toBe('S');
-    expect(saveBest(base, kv)).toBe(true);
-    expect(loadBest('daily', kv)?.grade).toBe('S');
-  });
+describe('saved world', () => {
   it('remembers the picked world', () => {
     const kv = memory();
     expect(loadWorld(kv)).toBeNull();
@@ -115,8 +102,8 @@ describe('best scores', () => {
         throw new Error('nope');
       },
     };
-    expect(loadBest('daily', bad)).toBeNull();
-    expect(saveBest(base, bad)).toBe(false);
+    expect(loadWorld(bad)).toBeNull();
+    expect(() => saveWorld('pirate', bad)).not.toThrow();
   });
 });
 

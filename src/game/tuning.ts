@@ -364,10 +364,30 @@ export const T = {
   CLUTCH_RECOVER: 10 * DEG,
   /** Minimum tiers to count as a wedding cake. */
   MIN_TIERS: 4,
+  S_GRADE_SECONDS: 15,
+
+  // ---------------------------------------------------------------- score (every try scores)
+  /** Getting all the way to the table; a partial run earns its share. */
+  SCORE_DISTANCE: 3000,
+  /** Per tier carried the whole way; a tier lost halfway keeps half. */
+  SCORE_CARGO: 500,
+  /** Win bonus, plus TIER_POINTS per delivered tier and TIME_POINTS_PER_S per second left. */
+  SCORE_DELIVERY: 2000,
   TIER_POINTS: 1000,
   TIME_POINTS_PER_S: 100,
+  /** Losses still earn a little pace: per second left, scaled by progress squared. */
+  SCORE_LOSS_PACE_PER_S: 20,
+  /** Poise: up to this much (scaled by progress) for a level cake... */
+  SCORE_POISE: 2000,
+  /** ...halved at this average lean over the round (rad). */
+  SCORE_POISE_HALF: 6 * DEG,
   CLUTCH_POINTS: 250,
-  S_GRADE_SECONDS: 15,
+  /** Taken off per full-strength hit (bumps, zaps, cannonballs, ...). */
+  SCORE_HIT_PENALTY: 200,
+  /** Taken off per skid on a spill. */
+  SCORE_SLIP_PENALTY: 40,
+  /** Scoreboard sanity check: the fastest plausible winning round (s). The bot's best is ~26. */
+  SCORE_MIN_WIN_TIME: 20,
 };
 
 export type Tuning = typeof T;

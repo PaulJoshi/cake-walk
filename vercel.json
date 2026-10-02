@@ -4,7 +4,7 @@
   "installCommand": "npm ci",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "rewrites": [{ "source": "/((?!assets/|_vercel/).*)", "destination": "/index.html" }],
+  "rewrites": [{ "source": "/((?!assets/|_vercel/|api/).*)", "destination": "/index.html" }],
   "headers": [
     {
       "source": "/assets/(.*)",

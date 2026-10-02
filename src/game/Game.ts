@@ -4,10 +4,12 @@ import type { Intent } from '../input/intent';
 import { WORLDS, isWorldId, type WorldId } from '../level/worlds';
 import type { Renderer } from '../render/Renderer';
 import { view, type Screen } from '../render/Screen';
+import { Scoreboard } from '../score/board';
+import { Profile } from '../score/profile';
 import {
+  fmtScore,
   grade,
   loadWorld,
-  saveBest,
   saveWorld,
   score,
   type Mode,
@@ -44,6 +46,9 @@ export class Game {
   /** ?bot=1: the autopilot plays the real round (demos, visual checks). */
   readonly botPlay: boolean;
   fps = 60;
+  /** Name, personal bests and unsent scores (IndexedDB). */
+  readonly profile = new Profile();
+  readonly scoreboard = new Scoreboard(this.profile);
 
   private readonly states: Record<StateName, State>;
   private state: State;
@@ -206,37 +211,59 @@ export class Game {
     this.screen.present();
   }
 
-  /** Build the round result, persist the best score and show the results overlay. */
+  /**
+   * Build the round result, record it as a personal best if it is one, show the results and
+   * send the score to the scoreboard in the background. Autopilot and debug rounds don't count.
+   */
   showResult(): void {
     const w = this.world;
-    const r: RoundResult = {
-      outcome: w.outcome,
-      tiers: w.cake.count,
-      secondsLeft: w.finalTimeLeft,
-      clutches: w.clutches,
-      mode: this.mode,
-      seed: this.seed,
-      world: this.world.worldId,
-    };
-    const isNew = w.won && saveBest(r);
-    this.ui.showResult(this, r, isNew, this.snapshot(r));
+    const r: RoundResult = { ...w.stats(), mode: this.mode, seed: this.seed, world: w.worldId };
+    const counts = !this.botPlay && !this.debug;
+    const rec = counts ? this.profile.record(r) : null;
+    this.ui.showResult(this, r, !!rec?.isBest && rec.score > 0, this.snapshot(r));
+    if (rec?.submission) {
+      void this.scoreboard.submit(rec.submission).then((ranks) => {
+        if (ranks && this.state.name === 'result') this.ui.showRanks(ranks);
+      });
+    }
   }
 
-  /** A 2x PNG-ready copy of the final frame with a caption, for sharing. */
+  /** A 2x copy of the final frame with a score card underneath, for sharing. */
   private snapshot(r: RoundResult): HTMLCanvasElement {
+    const fw = view.w * 2;
+    const fh = view.h * 2;
+    const band = Math.round(Math.max(140, fw * 0.2));
     const c = document.createElement('canvas');
-    c.width = view.w * 2;
-    c.height = view.h * 2;
+    c.width = fw;
+    c.height = fh + band;
     const ctx = c.getContext('2d')!;
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(this.screen.buffer, 0, 0, c.width, c.height);
-    ctx.fillStyle = 'rgba(26,15,31,0.85)';
-    ctx.fillRect(0, c.height - 40, c.width, 40);
-    ctx.font = '16px "Press Start 2P", monospace';
+    ctx.drawImage(this.screen.buffer, 0, 0, fw, fh);
+    ctx.fillStyle = '#1a0f1f';
+    ctx.fillRect(0, fh, fw, band);
+    ctx.fillStyle = '#ff6fa8';
+    ctx.fillRect(0, fh, fw, 4);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#ffd36b';
-    ctx.fillText(`CAKE WALK · GRADE ${grade(r)} · ${score(r)}`, c.width / 2, c.height - 20);
+    /** Draw centred text at up to `size` px, shrunk to fit the width. */
+    const line = (text: string, y: number, size: number, color: string) => {
+      ctx.font = `${size}px "Press Start 2P", monospace`;
+      const fit = Math.min(1, (fw - 32) / Math.max(1, ctx.measureText(text).width));
+      ctx.font = `${Math.floor(size * fit)}px "Press Start 2P", monospace`;
+      ctx.fillStyle = '#4a1d3f';
+      ctx.fillText(text, fw / 2 + 3, y + 3);
+      ctx.fillStyle = color;
+      ctx.fillText(text, fw / 2, y);
+    };
+    const world = WORLDS[r.world ?? 'wedding'].name.toUpperCase();
+    const mode = r.mode === 'daily' ? `DAILY ${r.seed}` : 'RANDOM';
+    const tail =
+      r.outcome === 'won'
+        ? `${r.tiers}/${T.TIER_COUNT} TIERS · ${r.secondsLeft.toFixed(1)}S LEFT`
+        : `${Math.round(r.progress * 100)}% OF THE WAY`;
+    line(`CAKE WALK · ${world} · ${mode}`, fh + band * 0.2, 16, '#ff6fa8');
+    line(`${fmtScore(score(r))} PTS`, fh + band * 0.5, Math.round(band * 0.28), '#ffd36b');
+    line(`GRADE ${grade(r)} · ${tail} · ${this.profile.name}`, fh + band * 0.8, 14, '#fff8ec');
     return c;
   }
 

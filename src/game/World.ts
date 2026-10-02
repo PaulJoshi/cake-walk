@@ -12,6 +12,7 @@ import { createWaiter, stepWaiter, type WaiterEnv, type WaiterState } from '../p
 import type { Intent } from '../input/intent';
 import type { Obstacle } from '../level/obstacles/types';
 import { WORLDS, type Layout, type WorldId } from '../level/worlds';
+import type { FinalOutcome, RoundStats } from '../score/formula';
 
 export type Outcome = 'none' | 'won' | 'toppled' | 'cupcake' | 'timeout';
 
@@ -82,7 +83,17 @@ export class World {
   setDownHold = 0;
   clutches = 0;
   hits = 0;
+  /** Sum of hit strengths (0..1 each). */
+  hitPower = 0;
+  /** Times the waiter skidded on a spill. */
+  slips = 0;
   maxLean = 0;
+  /** Furthest the waiter got from the start towards the table (0..1). */
+  progress = 0;
+  /** Tiers carried, weighted by the share of the way they were carried (0..TIER_COUNT). */
+  cargo = 0;
+  /** Integral of the absolute lean over the round (rad*s). */
+  leanTime = 0;
   /** Seconds remaining at the moment of winning. */
   finalTimeLeft = 0;
   /** True while leaning past the gasp angle (guests say OOOH!). */
@@ -125,9 +136,11 @@ export class World {
     applyImpulse(this.cake, dOmega, dSlide);
     this.waiter.v *= speedMult;
     this.hits++;
+    const strength = Math.min(1, Math.abs(dOmega) / 1.5 + Math.abs(dSlide) / 120);
+    this.hitPower += strength;
     this.events.push({
       type: 'hit',
-      strength: Math.min(1, Math.abs(dOmega) / 1.5 + Math.abs(dSlide) / 120),
+      strength,
       x,
       label,
     });
@@ -180,11 +193,20 @@ export class World {
     if (moving) this.wasMoving = true;
     else if (w.v < 5) this.wasMoving = false;
 
+    // Progress only counts forward; every tier on the tray earns its share of the way.
+    const lv = this.level;
+    const p = Math.min(1, Math.max(0, (w.x - lv.START_X) / (lv.TABLE.x0 - lv.START_X)));
+    if (p > this.progress) {
+      this.cargo += c.count * (p - this.progress);
+      this.progress = p;
+    }
+
     const before = c.count;
     const fell = stepCake(t, c, w.aTray + aFloor * t.ARM_COUPLING, w.aUp + this.floorAUp, dt);
     if (fell >= 0) this.events.push({ type: 'tierLost', from: fell, to: before, theta: c.theta });
 
     const lean = Math.abs(c.theta);
+    this.leanTime += lean * dt;
     this.maxLean = Math.max(this.maxLean, lean);
 
     // Slow-motion moment when any tier gets close to sliding off.
@@ -242,6 +264,28 @@ export class World {
     this.outcome = o;
     this.outcomeTime = 0;
     if (o !== 'won') this.finalTimeLeft = this.timeLeft;
+  }
+
+  /** What the round measured, for the score. Only meaningful once finished. */
+  stats(): RoundStats {
+    return {
+      outcome: this.outcome as FinalOutcome,
+      tiers: this.cake.count,
+      secondsLeft: this.finalTimeLeft,
+      clutches: this.clutches,
+      progress: this.progress,
+      cargo: Math.min(this.t.TIER_COUNT, this.cargo),
+      leanAvg: this.time > 0 ? this.leanTime / this.time : 0,
+      hits: this.hits,
+      hitPower: this.hitPower,
+      slips: this.slips,
+    };
+  }
+
+  /** The spill made the waiter skid. */
+  slip(): void {
+    this.slips++;
+    this.events.push({ type: 'slip' });
   }
 
   /** Teleport (debug zone skip). */
