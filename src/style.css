@@ -430,6 +430,18 @@ body {
   display: none;
 }
 
+/* Sharing the game only belongs on the title screen. */
+.cw-corner:not([data-screen='title']) [data-action='shareGame'] {
+  display: none;
+}
+
+#ui .cw-icon svg {
+  display: block;
+  width: calc(var(--px) * 7);
+  height: calc(var(--px) * 7);
+  margin: auto;
+}
+
 /* Source link: small and faint in the bottom-left corner, clear of the safe area. */
 .cw-gh {
   position: absolute;

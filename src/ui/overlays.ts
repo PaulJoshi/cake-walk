@@ -23,6 +23,7 @@ type Action =
   | 'retry'
   | 'switch'
   | 'share'
+  | 'shareGame'
   | 'title'
   | 'resume'
   | 'pause'
@@ -101,6 +102,12 @@ function worldIcon(id: WorldId): string {
 
 const REPO_URL = 'https://github.com/PaulJoshi/cake-walk';
 
+/** The usual three-dot share mark, for the title screen's corner button. */
+const SHARE_ICON =
+  '<svg viewBox="0 0 16 16" aria-hidden="true"><g fill="currentColor">' +
+  '<circle cx="12.5" cy="3.5" r="2.5"/><circle cx="3.5" cy="8" r="2.5"/><circle cx="12.5" cy="12.5" r="2.5"/></g>' +
+  '<path d="M12.5 3.5 3.5 8l9 4.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
+
 /** A faint GitHub mark in the bottom-left corner of the title and pause screens. */
 const GITHUB_LINK =
   `<a class="cw-gh" href="${REPO_URL}" target="_blank" rel="noopener" aria-label="Source code on GitHub" title="Source code on GitHub">` +
@@ -142,6 +149,7 @@ export class Overlays {
         <div class="cw-touch-r"><span>HOLD<br>TO WALK</span></div>
       </div>
       <div class="cw-corner">
+        <button class="cw-icon" data-action="shareGame" aria-label="Share the game" title="Share the game">${SHARE_ICON}</button>
         <button class="cw-icon" data-action="pause" aria-label="Pause (P)" title="Pause (P)">❚❚</button>
         <button class="cw-icon" data-action="mute" aria-label="Mute (M)" title="Mute (M)">♪</button>
         <button class="cw-icon" data-action="fullscreen" aria-label="Fullscreen (F)" title="Fullscreen (F)">⛶</button>
@@ -163,9 +171,10 @@ export class Overlays {
       } else if (this.panel.dataset.screen === 'title' && e.target === this.panel) a = 'daily';
       if (!a) return;
       // iOS: the first tap on the title asks for motion access (it must come from a tap),
-      // then carries on with whatever was tapped.
+      // then carries on with whatever was tapped. Sharing skips it: the share sheet also
+      // needs the tap, and waiting on the motion prompt would use it up.
       const start = this.screen === 'title' || this.screen === 'challenge';
-      if (a !== 'tilt' && start && this.game?.input.askTiltOnFirstTap) {
+      if (a !== 'tilt' && a !== 'shareGame' && start && this.game?.input.askTiltOnFirstTap) {
         const act = a;
         void this.askTilt().then(() => this.act(act));
       } else this.act(a);
@@ -255,6 +264,9 @@ export class Overlays {
       case 'share':
         void this.share();
         break;
+      case 'shareGame':
+        void this.shareGame();
+        break;
       case 'scores':
         this.boardWorld = g.worldId;
         this.editingName = false;
@@ -323,6 +335,7 @@ export class Overlays {
     this.panel.innerHTML = html;
     this.panel.hidden = false;
     this.corner.classList.add('no-pause');
+    this.corner.dataset.screen = screen;
     const first =
       (focus ? this.panel.querySelector<HTMLButtonElement>(focus) : null) ??
       this.panel.querySelector<HTMLButtonElement>('button[data-primary]') ??
@@ -335,6 +348,7 @@ export class Overlays {
     this.panel.dataset.screen = '';
     this.panel.innerHTML = '';
     this.corner.classList.remove('no-pause');
+    delete this.corner.dataset.screen;
     // A badge toast never carries on into the next round.
     this.hideBadgeToast();
   }
@@ -778,6 +792,29 @@ export class Overlays {
     if (r.weekRank) bits.push(`#${r.weekRank} this week`);
     if (r.allRank) bits.push(`#${r.allRank} all time`);
     el.innerHTML = bits.length ? `${TROPHY}${bits.join(' · ')}` : '';
+  }
+
+  /** The title screen's share button: the share sheet with the game's link, else copy it. */
+  private async shareGame(): Promise<void> {
+    const url = `${location.origin}/`;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Cake Walk',
+          text: 'Carry a 7-tier wedding cake through a chaotic reception in 60 seconds. Can you deliver it?',
+          url,
+        });
+        return;
+      }
+    } catch (e) {
+      if ((e as Error)?.name === 'AbortError') return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      this.flash('Link copied!');
+    } catch {
+      this.flash(url);
+    }
   }
 
   private async share(): Promise<void> {
