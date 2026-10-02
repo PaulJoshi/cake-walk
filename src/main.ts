@@ -6,6 +6,7 @@ import { Input } from './input/Input';
 import { Renderer } from './render/Renderer';
 import { Screen } from './render/Screen';
 import { Overlays } from './ui/overlays';
+import { animateTabTitle } from './ui/tabTitle';
 
 // Vercel Web Analytics (page views). No-ops in dev; data flows once deployed on Vercel.
 inject();
@@ -21,6 +22,7 @@ const audio = new Audio();
 const ui = new Overlays(uiRoot);
 const game = new Game(screen, renderer, input, audio, ui);
 ui.setMuted(audio.muted);
+animateTabTitle(() => game.worldId, reducedMotion);
 
 // Wait briefly for the pixel font so canvas text doesn't flash the fallback.
 const fontReady = document.fonts?.load('16px "Press Start 2P"').catch(() => undefined);
