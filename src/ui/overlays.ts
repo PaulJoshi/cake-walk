@@ -3,6 +3,7 @@ import { T } from '../game/tuning';
 import { WORLDS, WORLD_IDS, isWorldId, type WorldId } from '../level/worlds';
 import { ACHIEVEMENTS, type Achievement } from '../score/achievements';
 import type { Board, BoardEntry, Ranks } from '../score/board';
+import { challengePath, challengeRound } from '../score/challenge';
 import { isoWeek } from '../score/formula';
 import { NAME_MAX } from '../score/names';
 import {
@@ -11,6 +12,7 @@ import {
   failLine,
   fmtScore,
   grade,
+  score,
   shareText,
   type RoundResult,
 } from '../score/score';
@@ -35,7 +37,9 @@ type Action =
   | 'boardWeek'
   | 'boardAll'
   | 'editName'
-  | 'badges';
+  | 'badges'
+  | 'accept'
+  | 'decline';
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
@@ -111,7 +115,6 @@ function cakes(n: number): string {
 /** DOM overlays for title, controls, pause, results and share. Plain buttons, keyboard friendly. */
 export class Overlays {
   private game: Game | null = null;
-  private muted = false;
   private readonly corner: HTMLElement;
   private readonly panel: HTMLElement;
   private readonly touch: HTMLElement;
@@ -161,7 +164,8 @@ export class Overlays {
       if (!a) return;
       // iOS: the first tap on the title asks for motion access (it must come from a tap),
       // then carries on with whatever was tapped.
-      if (a !== 'tilt' && this.screen === 'title' && this.game?.input.askTiltOnFirstTap) {
+      const start = this.screen === 'title' || this.screen === 'challenge';
+      if (a !== 'tilt' && start && this.game?.input.askTiltOnFirstTap) {
         const act = a;
         void this.askTilt().then(() => this.act(act));
       } else this.act(a);
@@ -209,13 +213,22 @@ export class Overlays {
         g.newRound();
         break;
       case 'switch':
+        g.endChallenge();
         g.newRound(g.mode === 'daily' ? 'free' : 'daily');
+        break;
+      case 'accept':
+        g.newRound();
+        break;
+      case 'decline':
+        g.endChallenge();
+        this.showTitle();
         break;
       case 'resume':
       case 'pause':
         g.togglePause();
         break;
       case 'title':
+        g.endChallenge();
         g.setState('title');
         break;
       case 'controls':
@@ -398,7 +411,6 @@ export class Overlays {
         </div>
         <div class="cw-buttons small">
           <button data-action="controls">Controls</button>
-          <button data-action="mute">${this.muted ? 'Unmute' : 'Mute'}</button>
           <button data-action="fullscreen">Fullscreen</button>
           ${this.tiltButton()}
         </div>
@@ -410,6 +422,26 @@ export class Overlays {
       focusWorld ? '.cw-world.on' : undefined,
     );
     this.refreshTitleScores();
+  }
+
+  /** A friend's challenge link opens here: who, the score to beat, and one tap to play. */
+  showChallenge(): void {
+    const c = this.game?.challenge;
+    if (!c) return;
+    this.open(
+      'challenge',
+      `<div class="cw-card cw-challenge">
+        <div class="cw-mode">${esc(challengeRound(c))}</div>
+        <h2>CHALLENGE!</h2>
+        <p class="cw-joke"><b>${esc(c.name)}</b> scored</p>
+        <div class="cw-score"><span class="cw-score-n">${fmtScore(c.score)}</span><span class="cw-score-l">points</span></div>
+        <p class="cw-small">Same round, same obstacles. Can you beat it?</p>
+        <div class="cw-buttons">
+          <button data-action="accept" data-primary>Play this round</button>
+          <button data-action="decline">Not now</button>
+        </div>
+      </div>`,
+    );
   }
 
   /** Inline name field (scoreboard footer and the Controls card). */
@@ -637,14 +669,11 @@ export class Overlays {
   }
 
   setMuted(m: boolean): void {
-    this.muted = m;
     const b = this.corner.querySelector<HTMLButtonElement>('[data-action="mute"]');
     if (b) {
       b.classList.toggle('off', m);
       b.setAttribute('aria-pressed', String(m));
     }
-    const tb = this.panel.querySelector<HTMLButtonElement>('.cw-title [data-action="mute"]');
-    if (tb) tb.textContent = m ? 'Unmute' : 'Mute';
   }
 
   toggleFullscreen(): void {
@@ -706,6 +735,7 @@ export class Overlays {
           <div class="cw-grade g-${gr}" aria-label="Grade ${gr}">${gr}</div>
           <div class="cw-score"><span class="cw-score-n">${fmtScore(parts.total)}</span><span class="cw-score-l">points</span></div>
         </div>
+        ${this.versus(parts.total)}
         <h2>${won ? 'CAKE DELIVERED!' : esc(fail!.title)}</h2>
         <p class="cw-joke">${esc(won ? WIN_LINES[gr as keyof typeof WIN_LINES] : fail!.joke)}</p>
         ${isNewBest ? '<div class="cw-newbest">NEW BEST!</div>' : ''}
@@ -729,6 +759,17 @@ export class Overlays {
     this.showBadgeToast(badges);
   }
 
+  /** During a challenge: how this try compares with the friend's score. */
+  private versus(total: number): string {
+    const c = this.game?.challenge;
+    if (!c) return '';
+    const who = esc(c.name);
+    const gap = fmtScore(Math.abs(total - c.score));
+    if (total > c.score) return `<p class="cw-vs win">You beat ${who} by ${gap}!</p>`;
+    if (total === c.score) return `<p class="cw-vs">Dead heat with ${who}!</p>`;
+    return `<p class="cw-vs">${who} still leads by ${gap}</p>`;
+  }
+
   /** Scoreboard placings for the round just shown (arrive a moment after the result). */
   showRanks(r: Ranks): void {
     const el = this.panel.querySelector('.cw-rank');
@@ -741,9 +782,18 @@ export class Overlays {
 
   private async share(): Promise<void> {
     const r = this.result;
-    if (!r) return;
-    const url = location.origin + location.pathname;
-    const text = shareText(r);
+    const g = this.game;
+    if (!r || !g) return;
+    // The link opens this exact round for whoever taps it, with this score to beat.
+    const url =
+      location.origin +
+      challengePath({
+        world: r.world ?? 'wedding',
+        seed: r.seed,
+        name: g.profile.name,
+        score: score(r),
+      });
+    const text = `${shareText(r)}\nCan you beat it?`;
     const full = `${text}\n${url}`;
     const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
     const blob =
