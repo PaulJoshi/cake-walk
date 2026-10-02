@@ -10,9 +10,8 @@ import {
 } from '../physics/cake';
 import { createWaiter, stepWaiter, type WaiterEnv, type WaiterState } from '../physics/waiter';
 import type { Intent } from '../input/intent';
-import { LEVEL } from '../level/level';
-import { buildObstacles } from '../level/obstacles';
 import type { Obstacle } from '../level/obstacles/types';
+import { WORLDS, type Layout, type WorldId } from '../level/worlds';
 
 export type Outcome = 'none' | 'won' | 'toppled' | 'cupcake' | 'timeout';
 
@@ -32,7 +31,14 @@ export type GameEvent =
   | { type: 'bouquetLand' }
   | { type: 'hop' }
   | { type: 'slip' }
-  | { type: 'timeout' };
+  | { type: 'timeout' }
+  | { type: 'bell'; n: number }
+  | { type: 'wave' }
+  | { type: 'boing'; strength: number }
+  | { type: 'squawk' }
+  | { type: 'flap' }
+  | { type: 'tentacle' }
+  | { type: 'slam'; x: number };
 
 /**
  * One round of CAKE WALK: waiter + cake + obstacles + timer + outcome. Completely headless
@@ -48,6 +54,12 @@ export class World {
   readonly obstacles: Obstacle[];
   readonly events: GameEvent[] = [];
   readonly env: WaiterEnv = { decelMult: 1, blockX: Infinity, blockV: 0 };
+  /** The world's layout (start, table, length). */
+  readonly level: Layout;
+  /** Extra vertical acceleration of the floor under the waiter this tick (px/s^2, + = up). */
+  floorAUp = 0;
+  /** How far the floor under the waiter is pushed down (px), e.g. by the gangplank. */
+  sink = 0;
 
   /** Simulated seconds since the round started. */
   time = 0;
@@ -72,15 +84,17 @@ export class World {
 
   constructor(
     readonly seed: string,
+    readonly worldId: WorldId = 'wedding',
     tuning: Tuning = T,
   ) {
     this.t = tuning;
     this.rng = createRng(seed);
     this.fxRng = createRng(`${seed}:fx`);
-    this.waiter = createWaiter(LEVEL.START_X);
+    this.level = WORLDS[worldId].layout;
+    this.waiter = createWaiter(this.level.START_X);
     this.cake = createCake(tuning);
     this.timeLeft = tuning.ROUND_TIME;
-    this.obstacles = buildObstacles(this.rng);
+    this.obstacles = WORLDS[worldId].build(this.rng);
   }
 
   get finished(): boolean {
@@ -92,7 +106,7 @@ export class World {
   }
 
   get inTableZone(): boolean {
-    return this.waiter.x >= LEVEL.TABLE.x0 && this.waiter.x <= LEVEL.TABLE.x1;
+    return this.waiter.x >= this.level.TABLE.x0 && this.waiter.x <= this.level.TABLE.x1;
   }
 
   /** Apply an obstacle hit to the cake (and optionally the waiter's speed). */
@@ -126,8 +140,10 @@ export class World {
 
     // Obstacles set up the environment (spill, blockers) and deliver hits.
     this.env.decelMult = 1;
-    this.env.blockX = LEVEL.TABLE.x;
+    this.env.blockX = this.level.TABLE.x;
     this.env.blockV = 0;
+    this.floorAUp = 0;
+    this.sink = 0;
     for (const o of this.obstacles) {
       o.update(this, dt);
       if (o.blockX) {
@@ -148,7 +164,7 @@ export class World {
     else if (w.v < 5) this.wasMoving = false;
 
     const before = c.count;
-    const fell = stepCake(t, c, w.aTray, w.aUp, dt);
+    const fell = stepCake(t, c, w.aTray, w.aUp + this.floorAUp, dt);
     if (fell >= 0) this.events.push({ type: 'tierLost', from: fell, to: before, theta: c.theta });
 
     const lean = Math.abs(c.theta);

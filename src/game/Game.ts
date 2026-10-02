@@ -1,10 +1,18 @@
 import type { Audio } from '../audio/Audio';
 import type { Input } from '../input/Input';
 import type { Intent } from '../input/intent';
-import { ZONES } from '../level/level';
+import { WORLDS, isWorldId, type WorldId } from '../level/worlds';
 import type { Renderer } from '../render/Renderer';
 import { view, type Screen } from '../render/Screen';
-import { grade, saveBest, score, type Mode, type RoundResult } from '../score/score';
+import {
+  grade,
+  loadWorld,
+  saveBest,
+  saveWorld,
+  score,
+  type Mode,
+  type RoundResult,
+} from '../score/score';
 import type { Overlays } from '../ui/overlays';
 import { randomSeed, todaySeed } from './rng';
 import { Countdown } from './states/Countdown';
@@ -27,6 +35,8 @@ export interface DrawOpts {
 export class Game {
   world: World;
   mode: Mode = 'daily';
+  /** The world picked on the title screen (?world= overrides the saved pick). */
+  worldId: WorldId;
   seed: string;
   /** Seed forced by ?seed= (overrides Daily Challenge/Random). */
   readonly urlSeed: string | null;
@@ -55,7 +65,9 @@ export class Game {
     this.botPlay = params.get('bot') === '1';
     this.urlSeed = params.get('seed');
     this.seed = this.urlSeed ?? todaySeed();
-    this.world = new World(this.seed);
+    const urlWorld = params.get('world');
+    this.worldId = isWorldId(urlWorld) ? urlWorld : (loadWorld() ?? 'wedding');
+    this.world = new World(this.seed, this.worldId);
     this.states = {
       title: new Title(),
       countdown: new Countdown(),
@@ -92,12 +104,28 @@ export class Game {
   newRound(mode: Mode = this.mode): void {
     this.mode = mode;
     this.seed = this.urlSeed ?? (mode === 'daily' ? todaySeed() : randomSeed());
-    this.world = new World(this.seed);
+    this.world = new World(this.seed, this.worldId);
     this.acc = 0;
     this.slowmo = 0;
     this.renderer.reset(this.world);
     this.audio.unlock();
     this.setState('countdown');
+  }
+
+  /** Pick a world on the title screen; the attract run behind it switches straight away. */
+  setWorld(id: WorldId): void {
+    if (id === this.worldId) return;
+    this.worldId = id;
+    saveWorld(id);
+    if (this.state.name === 'title') (this.states.title as Title).newRun(this);
+  }
+
+  /** Step through the worlds (arrow keys on the title screen). */
+  cycleWorld(dir: number): WorldId {
+    const ids = Object.keys(WORLDS) as WorldId[];
+    const i = ids.indexOf(this.worldId);
+    this.setWorld(ids[(i + dir + ids.length) % ids.length]);
+    return this.worldId;
   }
 
   private autoPause(): void {
@@ -112,14 +140,17 @@ export class Game {
   private bindInput(): void {
     this.input.on((a) => {
       const s = this.state.name;
-      if (a === 'any' && s === 'title' && this.ui.screen === 'title') this.newRound('daily');
+      if ((a === 'prevWorld' || a === 'nextWorld') && s === 'title' && this.ui.screen === 'title') {
+        this.cycleWorld(a === 'prevWorld' ? -1 : 1);
+        this.ui.showTitle(true);
+      } else if (a === 'any' && s === 'title' && this.ui.screen === 'title') this.newRound('daily');
       else if (a === 'retry' && s !== 'title') this.newRound();
       else if (a === 'pause') this.togglePause();
       else if (a === 'mute') this.ui.setMuted(this.audio.toggleMute());
       else if (a === 'fullscreen') this.ui.toggleFullscreen();
       else if (a.startsWith('zone') && this.debug && s === 'playing') {
         const i = Number(a.slice(4));
-        const z = ZONES[i === 0 ? 9 : i - 1];
+        const z = WORLDS[this.world.worldId].zones[i === 0 ? 9 : i - 1];
         if (z) this.world.skipTo(z.x);
       }
     });
@@ -185,6 +216,7 @@ export class Game {
       clutches: w.clutches,
       mode: this.mode,
       seed: this.seed,
+      world: this.world.worldId,
     };
     const isNew = w.won && saveBest(r);
     this.ui.showResult(this, r, isNew, this.snapshot(r));

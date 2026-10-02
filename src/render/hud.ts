@@ -1,6 +1,6 @@
 import type { World } from '../game/World';
 import { T } from '../game/tuning';
-import { LEVEL } from '../level/level';
+import { WORLDS } from '../level/worlds';
 import { GOLD, INK, PINK, RED, text } from './draw';
 import { view } from './Screen';
 
@@ -58,12 +58,10 @@ export function drawHud(
   const x0 = Math.round(view.w / 2 - half);
   const x1 = Math.round(view.w / 2 + half);
   const y = view.h - 8;
+  const lv = w.level;
   const p = Math.max(
     0,
-    Math.min(
-      1,
-      (w.waiter.x - LEVEL.START_X) / ((LEVEL.TABLE.x0 + LEVEL.TABLE.x1) / 2 - LEVEL.START_X),
-    ),
+    Math.min(1, (w.waiter.x - lv.START_X) / ((lv.TABLE.x0 + lv.TABLE.x1) / 2 - lv.START_X)),
   );
   ctx.fillStyle = 'rgba(26,15,31,0.75)';
   ctx.fillRect(x0 - 4, y - 4, x1 - x0 + 16, 9);
@@ -84,14 +82,14 @@ export function drawHud(
 
   // Tutorial hints in the kitchen zone.
   const wx = w.waiter.x;
-  if (!w.finished && wx < LEVEL.KITCHEN_END && w.time < 12) {
+  if (!w.finished && wx < lv.KITCHEN_END && w.time < 12) {
     const blink = Math.sin(time * 6) > -0.3;
-    const msg = wx < LEVEL.START_X + 30 ? o.walkHint : o.balanceHint;
+    const msg = wx < lv.START_X + 30 ? o.walkHint : o.balanceHint;
     if (blink) text(ctx, msg, view.w / 2, sy + 48, 8, INK);
   }
 
   // Set-down guidance.
-  if (!w.finished && wx > LEVEL.TABLE.x0 - 260) {
+  if (!w.finished && wx > lv.TABLE.x0 - 260) {
     if (w.inTableZone) {
       const f = w.setDownHold / T.SET_DOWN_HOLD;
       text(
@@ -106,8 +104,8 @@ export function drawHud(
       ctx.fillRect(view.w / 2 - 31, sy + 58, 62, 6);
       ctx.fillStyle = '#6be38a';
       ctx.fillRect(view.w / 2 - 30, sy + 59, Math.round(60 * f), 4);
-    } else if (wx < LEVEL.TABLE.x0)
-      text(ctx, 'STOP AT THE CAKE TABLE', view.w / 2, sy + 48, 8, GOLD);
+    } else if (wx < lv.TABLE.x0)
+      text(ctx, WORLDS[w.worldId].tableHint, view.w / 2, sy + 48, 8, GOLD);
   }
 
   if (o.countdown) {

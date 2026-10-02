@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   grade,
   loadBest,
+  loadWorld,
   saveBest,
+  saveWorld,
   score,
   shareText,
   type KV,
@@ -66,6 +68,11 @@ describe('share text', () => {
       '🎂 CAKE WALK — Daily Challenge 2026-09-30 — Grade F — cake toppled',
     );
   });
+  it('names the pirate ship', () => {
+    expect(shareText(r({ world: 'pirate', clutches: 0 }))).toBe(
+      '🎂 CAKE WALK — Pirate Ship — Daily Challenge 2026-09-30 — Grade S — 7/7 tiers — 17.3s left',
+    );
+  });
 });
 
 describe('best scores', () => {
@@ -77,6 +84,20 @@ describe('best scores', () => {
     expect(saveBest(base, kv)).toBe(true);
     expect(loadBest('daily', kv)?.grade).toBe('S');
     expect(loadBest('free', kv)).toBeNull();
+  });
+  it('keeps the pirate ship bests apart from the wedding', () => {
+    const kv = memory();
+    expect(saveBest(r({ world: 'pirate' }), kv)).toBe(true);
+    expect(loadBest('daily', kv)).toBeNull();
+    expect(loadBest('daily', kv, 'pirate')?.grade).toBe('S');
+    expect(saveBest(base, kv)).toBe(true);
+    expect(loadBest('daily', kv)?.grade).toBe('S');
+  });
+  it('remembers the picked world', () => {
+    const kv = memory();
+    expect(loadWorld(kv)).toBeNull();
+    saveWorld('pirate', kv);
+    expect(loadWorld(kv)).toBe('pirate');
   });
   it('survives broken storage', () => {
     const bad: KV = {

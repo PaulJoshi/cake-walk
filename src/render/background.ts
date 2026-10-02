@@ -10,8 +10,8 @@ export const DEPTH_PX = 20;
 /** Where the back wall meets the floor. */
 export const WALL_Y = 178;
 /** Extra wall above the scene and floor below it, shown on tall (portrait) views. */
-const WALL_EXT = 280;
-const FLOOR_EXT = 420;
+export const WALL_EXT = 280;
+export const FLOOR_EXT = 420;
 
 export const FAR = 0.35;
 export const LIGHTS = 0.5;

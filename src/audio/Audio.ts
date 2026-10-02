@@ -1,5 +1,6 @@
 import type { GameEvent, Outcome, World } from '../game/World';
 import { T } from '../game/tuning';
+import type { WorldId } from '../level/worlds';
 
 const MUTE_KEY = 'cakewalk:muted';
 const midi = (n: number) => 440 * Math.pow(2, (n - 69) / 12);
@@ -29,6 +30,52 @@ const MELODY: [number, number][] = [
 /** One bass note per beat. */
 const BASS = [48, 43, 48, 43, 43, 50, 43, 48, 41, 48, 41, 48, 43, 43, 48, 48];
 
+/** "What Shall We Do with the Drunken Sailor" (traditional sea shanty). 16 beats. */
+const SHANTY: [number, number][] = [
+  [69, 0.5],
+  [69, 0.25],
+  [69, 0.25],
+  [69, 0.5],
+  [69, 0.25],
+  [69, 0.25],
+  [69, 0.5],
+  [62, 0.5],
+  [65, 0.5],
+  [69, 0.5],
+  [67, 0.5],
+  [67, 0.25],
+  [67, 0.25],
+  [67, 0.5],
+  [67, 0.25],
+  [67, 0.25],
+  [67, 0.5],
+  [60, 0.5],
+  [64, 0.5],
+  [67, 0.5],
+  [69, 0.5],
+  [69, 0.25],
+  [69, 0.25],
+  [69, 0.5],
+  [69, 0.25],
+  [69, 0.25],
+  [69, 0.5],
+  [71, 0.5],
+  [73, 0.5],
+  [74, 0.5],
+  [72, 0.5],
+  [69, 0.5],
+  [67, 0.5],
+  [64, 0.5],
+  [62, 1],
+  [62, 1],
+];
+const SHANTY_BASS = [50, 45, 50, 45, 48, 43, 48, 43, 50, 45, 50, 45, 48, 43, 50, 50];
+
+const SONGS: Record<WorldId, { melody: [number, number][]; bass: number[] }> = {
+  wedding: { melody: MELODY, bass: BASS },
+  pirate: { melody: SHANTY, bass: SHANTY_BASS },
+};
+
 function loadMuted(): boolean {
   try {
     return localStorage.getItem(MUTE_KEY) === '1';
@@ -57,6 +104,7 @@ export class Audio {
   private melodyIdx = 0;
   private beat = 0;
   private bpm = 140;
+  private song = SONGS.wedding;
 
   constructor() {
     const unlock = () => this.unlock();
@@ -334,6 +382,33 @@ export class Audio {
       case 'timeout':
         this.clink();
         break;
+      case 'bell':
+        this.tone(midi(84), this.now, 0.7, 0.14, 'sine');
+        this.tone(midi(91), this.now, 0.4, 0.06, 'triangle');
+        break;
+      case 'wave':
+        this.burst(this.now, 1.4, 0.5, 'lowpass', 4000, 200, 1);
+        this.burst(this.now + 0.1, 1.0, 0.25, 'highpass', 2500, 6000, 1);
+        this.tone(90, this.now, 0.8, 0.3, 'sine', 40);
+        break;
+      case 'boing':
+        this.tone(160, this.now, 0.22, 0.08 + e.strength * 0.12, 'sine', 330);
+        break;
+      case 'squawk':
+        this.tone(1500, this.now, 0.12, 0.08, 'square25', 900);
+        this.tone(1300, this.now + 0.13, 0.16, 0.07, 'square25', 700);
+        break;
+      case 'flap':
+        this.burst(this.now, 0.1, 0.08, 'bandpass', 900, 1600, 2);
+        break;
+      case 'tentacle':
+        this.tone(55, this.now, 0.9, 0.3, 'sawtooth', 90);
+        this.burst(this.now, 0.4, 0.2, 'lowpass', 900, 200);
+        break;
+      case 'slam':
+        this.thump(1);
+        this.burst(this.now, 0.5, 0.3, 'lowpass', 1500, 120, 2);
+        break;
       default:
         break;
     }
@@ -382,10 +457,16 @@ export class Audio {
     this.creakFilter!.frequency.setTargetAtTime(f * 3, t, 0.05);
 
     this.bpm = w.timeLeft < 10 && !w.finished ? 196 : 140;
+    const song = SONGS[w.worldId];
+    if (song !== this.song) {
+      this.song = song;
+      this.melodyIdx = 0;
+      this.beat = 0;
+    }
     if (!this.playing) return;
     const spb = 60 / this.bpm;
     while (this.nextNote < t + 0.2) {
-      const [note, beats] = MELODY[this.melodyIdx];
+      const [note, beats] = this.song.melody[this.melodyIdx];
       const dur = beats * spb;
       this.tone(
         midi(note),
@@ -401,13 +482,21 @@ export class Audio {
         const tb = this.nextNote + b * spb;
         const whole = Math.round((this.beat + b) * 2) / 2;
         if (Number.isInteger(whole)) {
-          this.tone(midi(BASS[whole % 16]), tb, spb * 0.8, 0.13, 'triangle', undefined, this.music);
+          this.tone(
+            midi(this.song.bass[whole % 16]),
+            tb,
+            spb * 0.8,
+            0.13,
+            'triangle',
+            undefined,
+            this.music,
+          );
           if (whole % 2 === 0) this.tone(70, tb, 0.08, 0.12, 'sine', 40, this.music);
         } else this.burst(tb, 0.04, 0.03, 'highpass', 7000, undefined, 1, this.music);
       }
       this.beat = (this.beat + beats) % 16;
       this.nextNote += dur;
-      this.melodyIdx = (this.melodyIdx + 1) % MELODY.length;
+      this.melodyIdx = (this.melodyIdx + 1) % this.song.melody.length;
     }
   }
 }

@@ -1,7 +1,22 @@
 import type { World } from '../../game/World';
 
 export type ObstacleKind =
-  'spill' | 'uncle' | 'roomba' | 'toddler' | 'grandma' | 'bassdrop' | 'bouquet' | 'conga' | 'table';
+  | 'spill'
+  | 'uncle'
+  | 'roomba'
+  | 'toddler'
+  | 'grandma'
+  | 'bassdrop'
+  | 'bouquet'
+  | 'conga'
+  | 'table'
+  | 'swell'
+  | 'cannonballs'
+  | 'barrel'
+  | 'plank'
+  | 'parrot'
+  | 'kraken'
+  | 'wave';
 
 /** A horizontal interval in the waiter's lane, used for hitboxes and bot prediction. */
 export interface Span {
@@ -25,6 +40,8 @@ export interface Obstacle {
   /** Optional blocker: the waiter's centre may not pass this x. */
   blockX?(w: World): number;
   blockV?(w: World): number;
+  /** Optional: where a polite waiter (the bot) should queue behind a blocker. */
+  queueX?(w: World): number;
 }
 
 /** Waiter body span in the lane. */

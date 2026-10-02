@@ -1,10 +1,10 @@
 import type { World } from '../game/World';
-import { ZONES } from '../level/level';
+import { WORLDS } from '../level/worlds';
 import type { Span } from '../level/obstacles/types';
 import { FLOOR_Y } from './background';
 import { text } from './draw';
 
-const spans: Span[] = [{ x0: 0, x1: 0 }];
+const spans: Span[] = Array.from({ length: 4 }, () => ({ x0: 0, x1: 0 }));
 const deg = (r: number) => ((r * 180) / Math.PI).toFixed(1);
 
 /** ?debug=1 overlay: numbers, hitboxes, seed and zone-skip help. */
@@ -49,7 +49,7 @@ export function drawDebug(ctx: CanvasRenderingContext2D, w: World, cam: number, 
       .slice(1, c.count)
       .map((t) => t.s.toFixed(1))
       .join(' ')}`,
-    `keys 1-9,0: ${ZONES.map((z) => z.name.slice(0, 3)).join(' ')}`,
+    `keys 1-9,0: ${WORLDS[w.worldId].zones.map((z) => z.name.slice(0, 3)).join(' ')}`,
   ];
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
   ctx.fillRect(2, 34, 250, lines.length * 9 + 4);

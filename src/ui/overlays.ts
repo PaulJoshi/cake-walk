@@ -1,8 +1,9 @@
 import type { Game } from '../game/Game';
 import { T } from '../game/tuning';
+import { WORLDS, WORLD_IDS, isWorldId, type WorldId } from '../level/worlds';
 import {
-  FAIL_LINES,
   WIN_LINES,
+  failLine,
   grade,
   loadBest,
   score,
@@ -24,9 +25,22 @@ type Action =
   | 'back'
   | 'mute'
   | 'fullscreen'
-  | 'tilt';
+  | 'tilt'
+  | 'world';
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+
+/** Tiny pixel-art icons for the world picker (inline SVG, crisp at any scale). */
+const WORLD_ICONS: Record<WorldId, string> = {
+  wedding:
+    '<rect x="5" y="2" width="6" height="3" fill="#fffaf2"/><rect x="4" y="5" width="8" height="3" fill="#ffd6e6"/><rect x="3" y="8" width="10" height="4" fill="#fffaf2"/><rect x="3" y="11" width="10" height="1" fill="#ff6fa8"/><rect x="4" y="7" width="8" height="1" fill="#ff6fa8"/><rect x="2" y="12" width="12" height="2" fill="#8f96a3"/><rect x="7" y="0" width="2" height="2" fill="#ff4f7b"/>',
+  pirate:
+    '<rect x="7" y="0" width="1" height="11" fill="#5b311f"/><rect x="8" y="1" width="6" height="5" fill="#141018"/><rect x="10" y="2" width="2" height="2" fill="#fffaf2"/><rect x="10" y="4" width="2" height="1" fill="#ff4f7b"/><rect x="2" y="5" width="5" height="5" fill="#f3e6c8"/><rect x="1" y="11" width="14" height="2" fill="#8f5a36"/><rect x="3" y="13" width="10" height="1" fill="#5b311f"/><rect x="0" y="14" width="16" height="2" fill="#2e7fd6"/>',
+};
+
+function worldIcon(id: WorldId): string {
+  return `<svg class="cw-wicon" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">${WORLD_ICONS[id]}</svg>`;
+}
 
 function cakes(n: number): string {
   let s = '';
@@ -43,6 +57,8 @@ export class Overlays {
   private readonly touch: HTMLElement;
   private readonly toast: HTMLElement;
   private result: RoundResult | null = null;
+  /** The world button that was just pressed. */
+  private pickedWorld = '';
   private snapshot: HTMLCanvasElement | null = null;
 
   constructor(root: HTMLElement) {
@@ -68,6 +84,7 @@ export class Overlays {
       if (el) {
         e.stopPropagation();
         a = el.dataset.action as Action;
+        this.pickedWorld = el.dataset.world ?? '';
       } else if (this.panel.dataset.screen === 'title' && e.target === this.panel) a = 'daily';
       if (!a) return;
       // iOS: the first tap on the title asks for motion access (it must come from a tap),
@@ -134,6 +151,12 @@ export class Overlays {
       case 'tilt':
         void this.toggleTilt();
         break;
+      case 'world':
+        if (isWorldId(this.pickedWorld)) {
+          g.setWorld(this.pickedWorld);
+          this.showTitle(true);
+        }
+        break;
       case 'share':
         void this.share();
         break;
@@ -177,12 +200,13 @@ export class Overlays {
     b.setAttribute('aria-pressed', String(on));
   }
 
-  private open(screen: string, html: string): void {
+  private open(screen: string, html: string, focus?: string): void {
     this.panel.dataset.screen = screen;
     this.panel.innerHTML = html;
     this.panel.hidden = false;
     this.corner.classList.add('no-pause');
     const first =
+      (focus ? this.panel.querySelector<HTMLButtonElement>(focus) : null) ??
       this.panel.querySelector<HTMLButtonElement>('button[data-primary]') ??
       this.panel.querySelector('button');
     first?.focus({ preventScroll: true });
@@ -196,18 +220,31 @@ export class Overlays {
   }
 
   private bestLine(mode: Mode): string {
-    const b = loadBest(mode);
+    const b = loadBest(mode, undefined, this.game?.worldId);
     return b ? `${b.grade} · ${b.score}` : '—';
   }
 
-  showTitle(): void {
+  /** Two side-by-side world tabs; the picked one is highlighted. */
+  private worldPicker(): string {
+    const current = this.game?.worldId ?? 'wedding';
+    const tabs = WORLD_IDS.map((id) => {
+      const on = id === current;
+      return `<button class="cw-world${on ? ' on' : ''}" data-action="world" data-world="${id}" role="radio" aria-checked="${on}">${worldIcon(id)}<span>${WORLDS[id].name}</span></button>`;
+    }).join('');
+    return `<div class="cw-worlds" role="radiogroup" aria-label="World">${tabs}</div>`;
+  }
+
+  /** @param focusWorld keep keyboard focus on the world picker (after switching worlds) */
+  showTitle(focusWorld = false): void {
     const touch = matchMedia('(pointer: coarse)').matches;
+    const world = WORLDS[this.game?.worldId ?? 'wedding'];
     this.open(
       'title',
-      `<div class="cw-title">
+      `<div class="cw-title" data-world="${world.id}">
         <div class="cw-tag">Night Out with Devin / Game Jam</div>
         <h1 class="cw-logo" aria-label="Cake Walk"><span>CAKE</span><span>WALK</span></h1>
-        <p class="cw-sub">60 seconds to save the wedding</p>
+        <p class="cw-sub">${world.tagline}</p>
+        ${this.worldPicker()}
         <div class="cw-buttons">
           <button data-action="daily" data-primary>Daily Challenge</button>
           <button data-action="free">Random</button>
@@ -219,8 +256,9 @@ export class Overlays {
           ${this.tiltButton()}
         </div>
         <p class="cw-best">Daily best ${this.bestLine('daily')} &nbsp; Random best ${this.bestLine('free')}</p>
-        <p class="cw-hint">${touch ? 'Tap anywhere to start' : 'Press any key to start'}</p>
+        <p class="cw-hint">${touch ? 'Tap anywhere to start' : 'Press any key to start · ← → change world'}</p>
       </div>`,
+      focusWorld ? '.cw-world.on' : undefined,
     );
   }
 
@@ -306,13 +344,14 @@ export class Overlays {
     this.snapshot = snapshot;
     const gr = grade(r);
     const won = r.outcome === 'won';
-    const fail = !won ? FAIL_LINES[r.outcome as keyof typeof FAIL_LINES] : null;
-    const best = loadBest(r.mode);
+    const fail = !won ? failLine(r) : null;
+    const best = loadBest(r.mode, undefined, r.world);
     const other = g.mode === 'daily' ? 'Random' : 'Daily Challenge';
+    const where = r.world === 'pirate' ? `${WORLDS.pirate.name} · ` : '';
     this.open(
       'result',
       `<div class="cw-card cw-result ${won ? 'win' : 'lose'}">
-        <div class="cw-mode">${r.mode === 'daily' ? `Daily Challenge ${esc(r.seed)}` : `Random #${esc(r.seed)}`}</div>
+        <div class="cw-mode">${where}${r.mode === 'daily' ? `Daily Challenge ${esc(r.seed)}` : `Random #${esc(r.seed)}`}</div>
         <div class="cw-grade g-${gr}" aria-label="Grade ${gr}">${gr}</div>
         <h2>${won ? 'CAKE DELIVERED!' : esc(fail!.title)}</h2>
         <p class="cw-joke">${esc(won ? WIN_LINES[gr as keyof typeof WIN_LINES] : fail!.joke)}</p>

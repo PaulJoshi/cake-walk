@@ -1,9 +1,10 @@
-import { LEVEL } from '../level/level';
 import { view } from './Screen';
 
 /** Side-scrolling camera that follows the waiter with a lookahead in the walking direction. */
 export class Camera {
   x = 0;
+  /** Level length (px): the camera never shows past either end. */
+  length = 2760;
   private look = 0;
 
   /** Where the waiter sits on screen (fraction of the width); further left on narrow views. */
@@ -28,6 +29,6 @@ export class Camera {
   }
 
   private clamp(x: number): number {
-    return Math.max(0, Math.min(LEVEL.LENGTH - view.w, x));
+    return Math.max(0, Math.min(this.length - view.w, x));
   }
 }
