@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://cake-walk-two.vercel.app/sitemap.xml
