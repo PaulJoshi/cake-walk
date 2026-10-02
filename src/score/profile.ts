@@ -1,4 +1,5 @@
 import { WORLD_IDS, type WorldId } from '../level/worlds';
+import { ACHIEVEMENT_IDS, newAchievements, type Achievement } from './achievements';
 import { isoWeek, type RoundStats } from './formula';
 import { cleanName, randomName } from './names';
 import { grade, score, storage, type Grade, type Mode, type RoundResult } from './score';
@@ -31,6 +32,8 @@ export interface ProfileData {
   /** This week's best per world, so only improvements are sent to the scoreboard. */
   weekBests: Partial<Record<WorldId, { week: string; score: number }>>;
   pending: Partial<Record<WorldId, Submission>>;
+  /** Earned badges: achievement id -> when (ms since epoch). */
+  badges: Record<string, number>;
 }
 
 /** Where the profile lives: IndexedDB, else localStorage, else memory. */
@@ -129,7 +132,11 @@ function sanitize(raw: unknown, fresh: ProfileData): ProfileData {
     bests: {},
     weekBests: {},
     pending: {},
+    badges: {},
   };
+  for (const [id, at] of Object.entries(d.badges ?? {})) {
+    if (ACHIEVEMENT_IDS.has(id) && typeof at === 'number') out.badges[id] = at;
+  }
   for (const w of WORLD_IDS) {
     if (isBest(d.bests?.[w])) out.bests[w] = d.bests[w];
     const wb = d.weekBests?.[w];
@@ -146,6 +153,8 @@ export interface Recorded {
   isBest: boolean;
   /** A scoreboard submission is due (beat this week's best). */
   submission: Submission | null;
+  /** Badges earned for the first time this round. */
+  badges: Achievement[];
 }
 
 /**
@@ -161,7 +170,14 @@ export class Profile {
     private readonly store: ProfileStore = idbStore(),
     rand: () => number = Math.random,
   ) {
-    this.data = { id: newId(rand), name: randomName(rand), bests: {}, weekBests: {}, pending: {} };
+    this.data = {
+      id: newId(rand),
+      name: randomName(rand),
+      bests: {},
+      weekBests: {},
+      pending: {},
+      badges: {},
+    };
     this.ready = store
       .load()
       .catch(() => null)
@@ -173,6 +189,7 @@ export class Profile {
           const b = fresh.bests[w];
           if (b && (!loaded.bests[w] || b.score > loaded.bests[w]!.score)) loaded.bests[w] = b;
         }
+        for (const [id, at] of Object.entries(fresh.badges)) loaded.badges[id] ??= at;
         this.data = loaded;
         if (!raw) this.persist();
         this.emit();
@@ -191,6 +208,10 @@ export class Profile {
     return this.data.bests[world] ?? null;
   }
 
+  hasBadge(id: string): boolean {
+    return id in this.data.badges;
+  }
+
   onChange(fn: () => void): void {
     this.listeners.push(fn);
   }
@@ -203,7 +224,7 @@ export class Profile {
     void this.store.save(this.data).catch(() => undefined);
   }
 
-  /** Record a finished round. Every round scores; only improvements are kept. */
+  /** Record a finished round. Every round scores; only improvements are kept. Awards badges. */
   record(r: RoundResult, now = new Date()): Recorded {
     const world = r.world ?? 'wedding';
     const s = score(r);
@@ -232,8 +253,10 @@ export class Profile {
       submission = { world, week, score: s, stats };
       this.data.pending[world] = submission;
     }
-    if (isBest || submission) this.persist();
-    return { score: s, isBest, submission };
+    const badges = newAchievements(r, (id) => this.hasBadge(id));
+    for (const a of badges) this.data.badges[a.id] = +now;
+    if (isBest || submission || badges.length) this.persist();
+    return { score: s, isBest, submission, badges };
   }
 
   /** The scoreboard has the score (or refused it for good). */

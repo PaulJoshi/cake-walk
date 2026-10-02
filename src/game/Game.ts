@@ -212,15 +212,15 @@ export class Game {
   }
 
   /**
-   * Build the round result, record it as a personal best if it is one, show the results and
-   * send the score to the scoreboard in the background. Autopilot and debug rounds don't count.
+   * Build the round result, record it as a personal best if it is one (and award badges), show
+   * the results and send the score to the scoreboard in the background. Autopilot and debug rounds don't count.
    */
   showResult(): void {
     const w = this.world;
     const r: RoundResult = { ...w.stats(), mode: this.mode, seed: this.seed, world: w.worldId };
     const counts = !this.botPlay && !this.debug;
     const rec = counts ? this.profile.record(r) : null;
-    this.ui.showResult(this, r, !!rec?.isBest && rec.score > 0, this.snapshot(r));
+    this.ui.showResult(this, r, !!rec?.isBest && rec.score > 0, this.snapshot(r), rec?.badges);
     if (rec?.submission) {
       void this.scoreboard.submit(rec.submission).then((ranks) => {
         if (ranks && this.state.name === 'result') this.ui.showRanks(ranks);

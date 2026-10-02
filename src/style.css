@@ -84,7 +84,8 @@ body {
 .cw-panel[data-screen='pause'],
 .cw-panel[data-screen='result'],
 .cw-panel[data-screen='controls'],
-.cw-panel[data-screen='scores'] {
+.cw-panel[data-screen='scores'],
+.cw-panel[data-screen='badges'] {
   background: rgba(26, 15, 31, 0.55);
 }
 
@@ -756,6 +757,134 @@ body {
   color: var(--pink);
 }
 
+/* ---------------------------------------------------------------- badges */
+
+.cw-medal {
+  width: calc(var(--px) * 5);
+  height: calc(var(--px) * 5);
+  flex: none;
+  color: var(--gold);
+  filter: drop-shadow(calc(var(--px) * 1) calc(var(--px) * 1) 0 var(--shadow));
+}
+
+.cw-medal.off {
+  color: rgba(255, 248, 236, 0.3);
+  opacity: 0.5;
+}
+
+.cw-badgecard {
+  width: min(92%, calc(var(--px) * 260));
+}
+
+.cw-badge-body {
+  text-align: left;
+  margin-bottom: calc(var(--px) * 3);
+}
+
+.cw-badge-body h3 {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--px) * 3);
+  margin: calc(var(--px) * 5) 0 calc(var(--px) * 2);
+  font-weight: normal;
+  font-size: calc(var(--px) * 6);
+  color: var(--pink);
+}
+
+.cw-badge-body h3 .cw-wicon {
+  width: calc(var(--px) * 8);
+  height: calc(var(--px) * 8);
+}
+
+.cw-badges {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--px) * 110), 1fr));
+  gap: calc(var(--px) * 2) calc(var(--px) * 4);
+}
+
+.cw-badges li {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--px) * 3);
+  padding: calc(var(--px) * 2);
+  background: rgba(255, 248, 236, 0.05);
+}
+
+.cw-badges li .cw-medal {
+  width: calc(var(--px) * 8);
+  height: calc(var(--px) * 8);
+}
+
+.cw-badges b {
+  display: block;
+  font-weight: normal;
+  font-size: calc(var(--px) * 5);
+  color: var(--gold);
+}
+
+.cw-badges small {
+  display: block;
+  font-size: calc(var(--px) * 4);
+  opacity: 0.75;
+}
+
+.cw-badges li.off b {
+  color: var(--ink);
+  opacity: 0.6;
+}
+
+.cw-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* A quiet note after the round when a badge is earned. Never covers the controls for long. */
+.cw-badge-toast {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--px) * 6);
+  display: flex;
+  align-items: center;
+  gap: calc(var(--px) * 3);
+  max-width: 70%;
+  padding: calc(var(--px) * 2) calc(var(--px) * 5);
+  background: rgba(26, 15, 31, 0.92);
+  border: calc(var(--px) * 1) solid var(--gold);
+  box-shadow: calc(var(--px) * 2) calc(var(--px) * 2) 0 var(--shadow);
+  font-size: calc(var(--px) * 5);
+  color: var(--ink);
+  text-align: left;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, calc(var(--px) * -4));
+  transition:
+    opacity 0.3s,
+    transform 0.3s;
+}
+
+.cw-badge-toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.cw-badge-toast .cw-medal {
+  width: calc(var(--px) * 8);
+  height: calc(var(--px) * 8);
+}
+
+.cw-badge-toast small {
+  display: block;
+  font-size: calc(var(--px) * 4);
+  color: var(--gold);
+}
+
 /* Portrait: stack the logo so it fits the narrow view. */
 @media (orientation: portrait) {
   .cw-logo {
@@ -771,5 +900,10 @@ body {
   .cw-newbest,
   .cw-hint {
     animation: none;
+  }
+
+  .cw-badge-toast {
+    transition: opacity 0.3s;
+    transform: translateX(-50%);
   }
 }

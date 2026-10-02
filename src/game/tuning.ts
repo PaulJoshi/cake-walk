@@ -388,6 +388,17 @@ export const T = {
   SCORE_SLIP_PENALTY: 40,
   /** Scoreboard sanity check: the fastest plausible winning round (s). The bot's best is ~26. */
   SCORE_MIN_WIN_TIME: 20,
+
+  // ---------------------------------------------------------------- badges (src/score/achievements.ts)
+  /** Photo Finish: deliver with less than this left (s). */
+  BADGE_PHOTO_FINISH_S: 3,
+  /** Nerves of Steel: clutch saves in one round. */
+  BADGE_CLUTCHES: 3,
+  /** Steady Hands: deliver with the average lean under this (rad). The bot averages ~2 deg. */
+  BADGE_STEADY_LEAN: 3 * DEG,
+  /** Score milestones in one round. The bot's wins score ~19-20k; most losses stay under 8k. */
+  BADGE_SCORE_LOW: 10_000,
+  BADGE_SCORE_HIGH: 18_000,
 };
 
 export type Tuning = typeof T;
