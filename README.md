@@ -2,7 +2,7 @@
 
 > **60 seconds to save the wedding.** Hold to walk. Move to balance.
 
-<p align="center"><img src="docs/title-screen.png" alt="Cake Walk title screen: pixel-art wedding reception with the CAKE WALK logo and Play Daily / Free Play buttons" width="720"/></p>
+<p align="center"><img src="docs/title-screen.png" alt="Cake Walk title screen: pixel-art wedding reception with the CAKE WALK logo, the menu buttons and three square world pictures (wedding cake, pirate ship, space station)" width="720"/></p>
 
 ```text
      ___________
@@ -52,8 +52,9 @@ half a second to set the cake down.
 
 ## Worlds
 
-Pick a world on the title screen (tap a tab, or `←` / `→` on a keyboard). The choice is
-remembered, and `?world=pirate` links straight to it.
+Pick a world on the title screen with the three square picture buttons under the menu (or
+`←` / `→` on a keyboard). The choice is remembered, and `?world=pirate` or `?world=space` links
+straight to it.
 
 ### Wedding Hall (the original)
 
@@ -87,6 +88,28 @@ The same 60-second walk across two ships lashed together at sunset, to the capta
    leaving the deck slippery for a few seconds.
 9. **Captain's table** - stop, hold still, deliver.
 
+### Space Station
+
+An astronaut is marrying an alien on the observation deck. Carry the cake there from the docking
+bay, past windows full of planets, while the station does its best to stop you.
+
+1. **Docking bay** - calm tutorial zone.
+2. **Moving walkway** - a conveyor belt that speeds you up. Getting on and off jolts the tray,
+   so step on gently.
+3. **Laser security gate** - a beam that blinks on and off. Get zapped and you hop. Watch the
+   warning flicker and time your crossing.
+4. **Gravity glitch** - the gravity generator cycles normal, 30%, normal, heavy. In low gravity
+   the cake barely feels the tray; in heavy gravity every lean falls twice as fast. The sign
+   overhead and the floor colour tell you which is coming.
+5. **Teleporter pad** - beams you (and the cake) further down the corridor in one jump. The
+   cake arrives a little shaken.
+6. **Flying saucer** - parks outside and points its tractor beam at the cake, tugging it side
+   to side and making it lighter. Keep walking.
+7. **Meteor shower** - at about 42 s left the klaxon counts 3-2-1, meteors pound the hull from
+   alternating sides, and the last one punches a hole that sucks the cake towards space until
+   the shutters slam. (The saucer flees as soon as the alarm starts.)
+8. **Observation deck** - stop, hold still, deliver.
+
 Every obstacle telegraphs itself about a second ahead with a `!` bubble or animation.
 
 ### Modes and seeds
@@ -98,7 +121,9 @@ Every obstacle telegraphs itself about a second ahead with a `!` bubble or anima
 The layout is fixed; the seed varies the uncle's rhythm, the Roomba's route, the toddler's
 delay, grandma's patience, the bass-drop direction, the bouquet's landing offset and the conga
 timing. On the ship it varies the swell, where the cannonballs, barrel, plank and kraken sit,
-the barrel's swing, how long the parrot stays and when the wave breaks.
+the barrel's swing, how long the parrot stays and when the wave breaks. On the station it varies
+the walkway's length and speed, the laser's rhythm, the gravity cycle, how far the teleporter
+throws you, the saucer's sway and the meteors' count, timing and first side.
 
 ### Winning, losing, scoring
 

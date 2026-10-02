@@ -275,6 +275,78 @@ export const T = {
   /** The deck stays slippery this long after the wave (s). */
   WAVE_WET_TIME: 3,
 
+  // ---------------------------------------------------------------- space station world
+  // Moving walkway: the floor carries the waiter forward; stepping on and off is a jolt.
+  WALKWAY_SHIFT: 40,
+  WALKWAY_LEN_MIN: 220,
+  WALKWAY_LEN_MAX: 300,
+  WALKWAY_SPEED_MIN: 55,
+  WALKWAY_SPEED_MAX: 80,
+  /** The belt picks you up / lets you go over this distance at each end (px). */
+  WALKWAY_RAMP: 26,
+  // Laser gate: pulses on and off on a seeded rhythm. Get caught in the beams: ZAP!
+  LASER_SHIFT: 50,
+  LASER_PERIOD_MIN: 2.2,
+  LASER_PERIOD_MAX: 2.9,
+  /** Fraction of each period the beams are on. */
+  LASER_DUTY_MIN: 0.35,
+  LASER_DUTY_MAX: 0.48,
+  /** Warning flicker before the beams switch on (s). */
+  LASER_WARN: 0.4,
+  LASER_HALF_W: 5,
+  LASER_OMEGA: 0.5,
+  LASER_SLIDE: 22,
+  LASER_HOP: 80,
+  LASER_SPEED_MULT: 0.6,
+  LASER_COOLDOWN: 0.8,
+  // Gravity glitch: inside this section gravity cycles normal, low, normal, heavy.
+  GRAVITY_SHIFT: 20,
+  GRAVITY_LEN_MIN: 280,
+  GRAVITY_LEN_MAX: 360,
+  /** Seconds per full cycle. */
+  GRAVITY_PERIOD_MIN: 4.4,
+  GRAVITY_PERIOD_MAX: 5.6,
+  /** Gravity multiplier in the low phase and (seeded) in the heavy phase. */
+  GRAVITY_LOW: 0.3,
+  GRAVITY_HEAVY_MIN: 2.0,
+  GRAVITY_HEAVY_MAX: 2.4,
+  /** Gravity changes over this long (s). */
+  GRAVITY_RAMP: 0.25,
+  // Teleporter: step on the pad and arrive further down the corridor, the cake a bit scrambled.
+  TELEPORT_SHIFT: 40,
+  TELEPORT_JUMP_MIN: 130,
+  TELEPORT_JUMP_MAX: 170,
+  TELEPORT_OMEGA_MIN: 0.25,
+  TELEPORT_OMEGA_MAX: 0.45,
+  TELEPORT_SLIDE: 16,
+  // Flying saucer: hovers over the cake and drags its top around with a tractor beam.
+  UFO_SHIFT: 50,
+  /** Fly-in time (telegraph, s). */
+  UFO_ARRIVE: 1.0,
+  UFO_BEAM_MIN: 3.0,
+  UFO_BEAM_MAX: 4.4,
+  /** How far it sways either side of the cake (px) and how long one sway takes (s). */
+  UFO_SWAY_MIN: 28,
+  UFO_SWAY_MAX: 42,
+  UFO_SWAY_PERIOD_MIN: 2.0,
+  UFO_SWAY_PERIOD_MAX: 2.8,
+  /** Peak angular acceleration of the beam's pull towards the saucer (rad/s^2). */
+  UFO_PULL: 1.2,
+  /** The beam lifts the cake: less effective gravity (px/s^2). */
+  UFO_LIFT: 40,
+  // Meteor shower (global event): the alarm counts 3-2-1, meteors hit, the hull breaches.
+  METEOR_SHIFT: 4,
+  METEOR_COUNT_MIN: 2,
+  METEOR_COUNT_MAX: 3,
+  METEOR_GAP_MIN: 0.35,
+  METEOR_GAP_MAX: 0.7,
+  METEOR_OMEGA: 0.3,
+  METEOR_SLIDE: 16,
+  /** After the last impact air rushes out of the breach until the shutters close (s). */
+  BREACH_TIME: 2.4,
+  /** Peak angular acceleration of the escaping air on the cake (rad/s^2). */
+  BREACH_ACCEL: 0.4,
+
   // ---------------------------------------------------------------- set-down
   /** Max speed to set the cake down (px/s). */
   SET_DOWN_SPEED: 8,

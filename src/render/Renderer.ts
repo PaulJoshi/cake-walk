@@ -16,7 +16,7 @@ import { tierOffset } from '../physics/cake';
 import { Background, DEPTH_PX, FLOOR_Y, depthY } from './background';
 import { CakeCanvas, PIVOT_X, PIVOT_Y, tierSprite } from './cakeArt';
 import { Camera } from './Camera';
-import { bubble, GOLD, INK, PINK, pixelLine, RED, text } from './draw';
+import { bubble, GOLD, GREEN, INK, PINK, pixelLine, RED, text } from './draw';
 import { FloatTexts, Particles, Shake } from './particles';
 import { view } from './Screen';
 import { buildSprites, type PersonSprites, type Sprite, type SpriteBank } from './sprites';
@@ -24,6 +24,8 @@ import { drawHud, type HudOptions } from './hud';
 import { drawDebug } from './debug';
 import { ShipScene } from './ship';
 import { buildShipSprites } from './shipSprites';
+import { StationScene } from './station';
+import { buildSpaceSprites } from './spaceSprites';
 
 const TRAY_W = 62;
 /** Tray top height above the floor. */
@@ -63,6 +65,7 @@ export class Renderer {
   readonly shake: Shake;
   private readonly bg: Background;
   private readonly ship: ShipScene;
+  private readonly station: StationScene;
   private readonly cake = new CakeCanvas();
   private readonly debris: Debris[] = [];
   private readonly decals: Decal[] = [];
@@ -78,6 +81,7 @@ export class Renderer {
     this.sprites = buildSprites();
     this.bg = new Background(this.sprites);
     this.ship = new ShipScene(buildShipSprites());
+    this.station = new StationScene(buildSpaceSprites());
     this.shake = new Shake(!reducedMotion);
     for (let i = 0; i < 10; i++)
       this.debris.push({
@@ -330,6 +334,75 @@ export class Renderer {
             FLOOR_Y + 4,
           );
         break;
+      case 'zap':
+        this.shake.add(0.4);
+        for (let i = 0; i < 14; i++)
+          this.particles.spawn(
+            'spark',
+            e.x,
+            FLOOR_Y - 20 - Math.random() * 50,
+            (Math.random() - 0.5) * 160,
+            -Math.random() * 120,
+            0.4,
+            i % 2 ? '#ff4f5e' : '#fff3b0',
+            1,
+            200,
+          );
+        break;
+      case 'gravity':
+        this.texts.spawn(
+          e.mult < 1 ? 'LOW GRAVITY!' : e.mult > 1 ? 'HEAVY GRAVITY!' : 'NORMAL GRAVITY',
+          w.waiter.x,
+          FLOOR_Y - 110,
+          e.mult < 1 ? '#6fd3ff' : e.mult > 1 ? RED : INK,
+          8,
+          1.1,
+        );
+        if (e.mult > 1) this.shake.add(0.2);
+        break;
+      case 'teleport':
+        for (const x of [e.from, e.to])
+          for (let i = 0; i < 24; i++)
+            this.particles.spawn(
+              'spark',
+              x + (Math.random() - 0.5) * 20,
+              FLOOR_Y - Math.random() * 90,
+              (Math.random() - 0.5) * 40,
+              -20 - Math.random() * 60,
+              0.7,
+              i % 2 ? '#6fd3ff' : '#e6f8ff',
+              1,
+              -40,
+            );
+        this.shake.add(0.2);
+        break;
+      case 'ufo':
+        this.texts.spawn('UFO!', w.waiter.x + 60, 60, '#9ff0c0', 16, 1.2);
+        break;
+      case 'meteor':
+        this.shake.add(0.7);
+        for (let i = 0; i < 16; i++)
+          this.particles.spawn(
+            'spark',
+            this.camera.x + Math.random() * view.w,
+            20 + Math.random() * 40,
+            (Math.random() - 0.5) * 60,
+            40 + Math.random() * 80,
+            0.8,
+            i % 2 ? '#ffb347' : '#8f96a3',
+            2,
+            300,
+            FLOOR_Y + 4,
+          );
+        break;
+      case 'breach':
+        this.shake.add(0.8);
+        this.texts.spawn('HULL BREACH!', view.w / 2, 64, RED, 24, 1.4, true);
+        break;
+      case 'shutters':
+        this.shake.add(0.2);
+        this.texts.spawn('SEALED!', view.w / 2, 64, GREEN, 16, 1, true);
+        break;
       case 'placed':
         this.place = {
           active: true,
@@ -444,7 +517,9 @@ export class Renderer {
     // Everything below is drawn in scene coordinates, placed inside the (possibly taller) view.
     ctx.translate(this.shake.ox, this.shake.oy + view.sceneY);
     const pirate = w.worldId === 'pirate';
+    const space = w.worldId === 'space';
     if (pirate) this.ship.drawBack(ctx, w, cam, this.time, this.gaspBubbles > 0);
+    else if (space) this.station.drawBack(ctx, w, cam, this.time, this.gaspBubbles > 0);
     else {
       this.bg.drawFar(ctx, cam, this.time);
       this.bg.drawFloor(ctx, cam, this.time);
@@ -463,6 +538,7 @@ export class Renderer {
 
     // Set pieces and obstacles behind the lane, then the waiter, then anything in front.
     if (pirate) this.ship.drawPieces(ctx, cam, this.time);
+    else if (space) this.station.drawPieces(ctx, w, cam, this.time);
     else {
       this.drawKitchen(ctx, cam);
       this.drawDJ(ctx, w, cam);
@@ -471,9 +547,11 @@ export class Renderer {
     this.drawTable(ctx, w, cam);
     this.drawObstacles(ctx, w, cam, true);
     if (pirate) this.ship.drawObstacles(ctx, w, cam, this.time, true);
+    if (space) this.station.drawObstacles(ctx, w, cam, this.time, true);
     this.drawWaiter(ctx, w, cam);
     this.drawObstacles(ctx, w, cam, false);
     if (pirate) this.ship.drawObstacles(ctx, w, cam, this.time, false);
+    if (space) this.station.drawObstacles(ctx, w, cam, this.time, false);
     this.drawBouquetFlight(ctx, w, cam);
 
     for (const d of this.debris) {
@@ -495,8 +573,14 @@ export class Renderer {
     if (this.gaspBubbles > 0 && !w.finished) {
       const n = pirate
         ? this.ship.visibleGuests(cam, this.guestXs)
-        : this.bg.visibleGuests(cam, this.guestXs);
-      const [a, b] = pirate ? ['ARRR!', 'AVAST!'] : ['OOOH!', 'OH NO!'];
+        : space
+          ? this.station.visibleGuests(cam, this.guestXs)
+          : this.bg.visibleGuests(cam, this.guestXs);
+      const [a, b] = pirate
+        ? ['ARRR!', 'AVAST!']
+        : space
+          ? ['ZORP!', 'BLEEP!']
+          : ['OOOH!', 'OH NO!'];
       for (let i = 0; i < n; i += 2)
         bubble(ctx, i % 4 ? a : b, this.guestXs[i], 150 + (i % 3) * 4, '#9b2d5a');
     }
@@ -861,7 +945,12 @@ export class Renderer {
     const feet = floor - Math.round(wt.y);
     const moving = wt.v > 3;
     const frame = moving ? Math.floor(wt.stride / 4) % 8 : 0;
-    const bank = w.worldId === 'pirate' ? this.ship.sprites : this.sprites;
+    const bank =
+      w.worldId === 'pirate'
+        ? this.ship.sprites
+        : w.worldId === 'space'
+          ? this.station.sprites
+          : this.sprites;
     const spr = moving ? bank.waiter[frame] : bank.waiterIdle;
     const bob = moving && frame % 4 === 2 ? 1 : 0;
     const top = feet - spr.height - bob;
@@ -871,6 +960,7 @@ export class Renderer {
     ctx.fillRect(x - 9, floor, 18, 2);
     ctx.globalAlpha = 1;
     ctx.drawImage(spr, x - 7, top);
+    if (w.worldId === 'space') this.station.drawHelmet(ctx, x, top);
     // Sweat drop grows with the lean.
     const lean = Math.abs(w.cake.theta);
     if (lean > 0.08 && !w.won) {
@@ -953,7 +1043,12 @@ export class Renderer {
       if (o.alert <= 0.05) continue;
       let y = FLOOR_Y - 58;
       if (o instanceof BassDrop) continue;
-      const sy = w.worldId === 'pirate' ? this.ship.alertY(o, w) : null;
+      const sy =
+        w.worldId === 'pirate'
+          ? this.ship.alertY(o, w)
+          : w.worldId === 'space'
+            ? this.station.alertY(o, w)
+            : null;
       if (sy !== null) {
         if (sy < 0) continue;
         y = sy;

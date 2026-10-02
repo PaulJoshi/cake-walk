@@ -1,6 +1,6 @@
 import { T } from '../game/tuning';
 import type { Outcome } from '../game/World';
-import type { WorldId } from '../level/worlds';
+import { WORLDS, isWorldId, type WorldId } from '../level/worlds';
 
 export type Grade = 'S' | 'A' | 'B' | 'C' | 'F';
 export type Mode = 'daily' | 'free';
@@ -38,8 +38,21 @@ export const PIRATE_FAIL_LINES: typeof FAIL_LINES = {
   timeout: { title: "TIME'S UP!", joke: 'The captain toasted an empty table. Arrr.' },
 };
 
+/** ...and so does the Space Station. */
+export const SPACE_FAIL_LINES: typeof FAIL_LINES = {
+  toppled: { title: 'TOPPLED!', joke: 'The cake is now a small moon.' },
+  cupcake: { title: 'CUPCAKE!', joke: "That's not a wedding cake. That's astronaut food." },
+  timeout: { title: "TIME'S UP!", joke: 'The aliens toasted an empty table. Bleep.' },
+};
+
+const WORLD_FAIL_LINES: Record<WorldId, typeof FAIL_LINES> = {
+  wedding: FAIL_LINES,
+  pirate: PIRATE_FAIL_LINES,
+  space: SPACE_FAIL_LINES,
+};
+
 export function failLine(r: RoundResult): { title: string; joke: string } {
-  const lines = r.world === 'pirate' ? PIRATE_FAIL_LINES : FAIL_LINES;
+  const lines = WORLD_FAIL_LINES[r.world ?? 'wedding'];
   return lines[r.outcome as keyof typeof FAIL_LINES];
 }
 
@@ -79,7 +92,7 @@ export function shareText(r: RoundResult): string {
   const mode = r.mode === 'daily' ? `Daily Challenge ${r.seed}` : `Random #${r.seed}`;
   const g = grade(r);
   const parts = [`🎂 CAKE WALK`, mode, `Grade ${g}`];
-  if (r.world === 'pirate') parts.splice(1, 0, 'Pirate Ship');
+  if (r.world && r.world !== 'wedding') parts.splice(1, 0, WORLDS[r.world].name);
   if (r.outcome === 'won') {
     parts.push(`${r.tiers}/${T.TIER_COUNT} tiers`, `${r.secondsLeft.toFixed(1)}s left`);
   } else {
@@ -145,7 +158,7 @@ const WORLD_KEY = 'cakewalk:world';
 export function loadWorld(kv: KV | null = storage()): WorldId | null {
   try {
     const v = kv?.getItem(WORLD_KEY);
-    return v === 'wedding' || v === 'pirate' ? v : null;
+    return isWorldId(v) ? v : null;
   } catch {
     return null;
   }
